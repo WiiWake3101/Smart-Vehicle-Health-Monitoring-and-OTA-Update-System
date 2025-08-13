@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, ScrollView, ActivityIndicator } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { MaterialCommunityIcons, FontAwesome5, Ionicons, Feather, MaterialIcons } from "@expo/vector-icons";
 import { LineChart } from "react-native-chart-kit";
+import { supabase } from "../lib/supabase";
 
 const { width, height } = Dimensions.get("window");
 
@@ -14,50 +15,159 @@ const IMUPage = ({ userId }) => {
   // Use userId from props or route params
   const userIdToUse = userId || route.params?.userId;
   
-  // State for live data simulation
+  // State for IMU data from Supabase
   const [accelData, setAccelData] = useState({
-    x: [0.1, 0.5, 0.2, 0.7, 0.3, 0.6],
-    y: [0.2, 0.1, 0.4, 0.2, 0.5, 0.3],
-    z: [0.3, 0.6, 0.1, 0.4, 0.2, 0.5]
+    x: [0, 0, 0, 0, 0, 0],
+    y: [0, 0, 0, 0, 0, 0],
+    z: [0, 0, 0, 0, 0, 0]
   });
   
   const [gyroData, setGyroData] = useState({
-    x: [0.05, 0.2, 0.1, 0.3, 0.15, 0.25],
-    y: [0.1, 0.05, 0.2, 0.1, 0.25, 0.15],
-    z: [0.15, 0.3, 0.05, 0.2, 0.1, 0.2]
+    x: [0, 0, 0, 0, 0, 0],
+    y: [0, 0, 0, 0, 0, 0],
+    z: [0, 0, 0, 0, 0, 0]
   });
 
-  // Simulated IMU thresholds for analysis
+  // Thresholds for alerts
   const [thresholds, setThresholds] = useState({
     accelMag: 0.8,
     jerk: 0.15
   });
 
-  // Simulate live data updates
+  // Additional state for loading and errors
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
+
+  // Number of data points to display
+  const DATA_POINTS = 6;
+
+  // Fetch initial data and set up real-time subscription
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Update accelerometer data by shifting and adding a new value
-      setAccelData(prev => {
-        const newX = [...prev.x.slice(1), Math.random() * 0.8];
-        const newY = [...prev.y.slice(1), Math.random() * 0.7];
-        const newZ = [...prev.z.slice(1), Math.random() * 0.6];
-        return { x: newX, y: newY, z: newZ };
+    let subscription;
+
+    const fetchInitialData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch the most recent 6 data points
+        const { data, error } = await supabase
+          .from('sensor_data')
+          .select('accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, time')
+          .eq('user_id', userIdToUse)
+          .order('time', { ascending: false })
+          .limit(DATA_POINTS);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          // Reverse data to get chronological order (oldest to newest)
+          const chronologicalData = [...data].reverse();
+          
+          // Update state with initial data
+          updateSensorData(chronologicalData);
+          
+          // Set last updated time
+          setLastUpdated(new Date(data[0].time).toLocaleTimeString());
+        }
+        
+        setLoading(false);
+      } catch (err) {
+        console.error('Error fetching sensor data:', err);
+        setError(err.message);
+        setLoading(false);
+      }
+    };
+
+    const setupRealtimeSubscription = async () => {
+      // Subscribe to changes on the sensor_data table for this user
+      subscription = supabase
+        .channel('sensor_data_changes')
+        .on('postgres_changes', 
+          { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'sensor_data',
+            filter: `user_id=eq.${userIdToUse}`
+          }, 
+          (payload) => {
+            // When new data comes in, add it to our existing data
+            const newDataPoint = payload.new;
+            
+            // Update with the new data point
+            setAccelData(prev => ({
+              x: [...prev.x.slice(1), newDataPoint.accel_x],
+              y: [...prev.y.slice(1), newDataPoint.accel_y],
+              z: [...prev.z.slice(1), newDataPoint.accel_z]
+            }));
+            
+            setGyroData(prev => ({
+              x: [...prev.x.slice(1), newDataPoint.gyro_x],
+              y: [...prev.y.slice(1), newDataPoint.gyro_y],
+              z: [...prev.z.slice(1), newDataPoint.gyro_z]
+            }));
+            
+            // Update last updated timestamp
+            setLastUpdated(new Date(newDataPoint.time).toLocaleTimeString());
+          }
+        )
+        .subscribe();
+    };
+
+    // Helper function to update state with sensor data
+    const updateSensorData = (dataArray) => {
+      // Extract accelerometer data
+      const accelX = dataArray.map(item => item.accel_x);
+      const accelY = dataArray.map(item => item.accel_y);
+      const accelZ = dataArray.map(item => item.accel_z);
+      
+      // Extract gyroscope data
+      const gyroX = dataArray.map(item => item.gyro_x);
+      const gyroY = dataArray.map(item => item.gyro_y);
+      const gyroZ = dataArray.map(item => item.gyro_z);
+      
+      // Pad arrays if we have fewer than DATA_POINTS
+      const padArray = (arr) => {
+        if (arr.length < DATA_POINTS) {
+          return Array(DATA_POINTS - arr.length).fill(0).concat(arr);
+        }
+        return arr;
+      };
+      
+      // Update state with padded arrays
+      setAccelData({
+        x: padArray(accelX),
+        y: padArray(accelY),
+        z: padArray(accelZ)
       });
       
-      // Update gyroscope data by shifting and adding a new value
-      setGyroData(prev => {
-        const newX = [...prev.x.slice(1), Math.random() * 0.3];
-        const newY = [...prev.y.slice(1), Math.random() * 0.35];
-        const newZ = [...prev.z.slice(1), Math.random() * 0.25];
-        return { x: newX, y: newY, z: newZ };
+      setGyroData({
+        x: padArray(gyroX),
+        y: padArray(gyroY),
+        z: padArray(gyroZ)
       });
-    }, 2000); // Update every 2 seconds
-    
-    return () => clearInterval(interval);
-  }, []);
+    };
 
-  // Labels for time points (x-axis)
-  const timeLabels = ["5s", "4s", "3s", "2s", "1s", "Now"];
+    // Run our functions
+    fetchInitialData();
+    setupRealtimeSubscription();
+
+    // Clean up subscription when component unmounts
+    return () => {
+      if (subscription) {
+        supabase.removeChannel(subscription);
+      }
+    };
+  }, [userIdToUse]);
+
+  // Generate time labels
+  const generateTimeLabels = () => {
+    if (!lastUpdated) return ["", "", "", "", "", "Now"];
+    
+    return Array(DATA_POINTS - 1).fill("").concat(["Now"]);
+  };
+
+  const timeLabels = generateTimeLabels();
 
   // Prepare chart data from state
   const accelChartData = {
@@ -121,7 +231,7 @@ const IMUPage = ({ userId }) => {
         strokeWidth: 2,
       },
       {
-        data: Array(6).fill(thresholds.accelMag), // Threshold line
+        data: Array(DATA_POINTS).fill(thresholds.accelMag), // Threshold line
         color: () => "rgba(255, 80, 80, 0.5)",
         strokeWidth: 1,
         strokeDasharray: [5, 5],
@@ -151,7 +261,7 @@ const IMUPage = ({ userId }) => {
         strokeWidth: 2,
       },
       {
-        data: Array(6).fill(thresholds.jerk), // Threshold line
+        data: Array(DATA_POINTS).fill(thresholds.jerk), // Threshold line
         color: () => "rgba(255, 80, 80, 0.5)",
         strokeWidth: 1,
         strokeDasharray: [5, 5],
@@ -197,152 +307,175 @@ const IMUPage = ({ userId }) => {
       
       <Text style={styles.title}>IMU Sensor Data</Text>
       
+      {/* Show last updated time if available */}
+      {lastUpdated && (
+        <View style={styles.lastUpdatedContainer}>
+          <MaterialIcons name="update" size={16} color="#bfc9d1" />
+          <Text style={styles.lastUpdatedText}>Last updated: {lastUpdated}</Text>
+        </View>
+      )}
+      
       <ScrollView
         style={{ width: "100%" }}
         contentContainerStyle={{ alignItems: "center", paddingTop: 24, paddingBottom: NAVBAR_HEIGHT + 20 }}
         horizontal={false}
         showsVerticalScrollIndicator={false}
       >
-        {/* IMU Info Card */}
-        <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>About IMU Sensors</Text>
-          <Text style={styles.infoText}>
-            The Inertial Measurement Unit (IMU) combines accelerometer and gyroscope 
-            sensors to track motion, orientation, and vibration patterns.
-          </Text>
-          <View style={styles.infoRow}>
-            <View style={styles.infoItem}>
-              <FontAwesome5 name="tachometer-alt" size={20} color="#4f8cff" style={styles.infoIcon} />
-              <Text style={styles.infoItemTitle}>Accelerometer</Text>
-              <Text style={styles.infoItemText}>Measures linear acceleration forces in G (9.8 m/s²)</Text>
-            </View>
-            <View style={styles.infoItem}>
-              <MaterialCommunityIcons name="rotate-3d" size={20} color="#00e676" style={styles.infoIcon} />
-              <Text style={styles.infoItemTitle}>Gyroscope</Text>
-              <Text style={styles.infoItemText}>Measures angular velocity in degrees per second</Text>
-            </View>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#4f8cff" />
+            <Text style={styles.loadingText}>Loading sensor data...</Text>
           </View>
-        </View>
-        
-        {/* Acceleration Card */}
-        <View style={styles.card}>
-          <Text style={styles.subtitle}>Accelerometer (X/Y/Z)</Text>
-          <LineChart
-            data={accelChartData}
-            width={Math.min(width * 0.8, 340)}
-            height={180}
-            chartConfig={chartConfig}
-            bezier
-            style={styles.graph}
-            withInnerLines={false}
-            withOuterLines={true}
-            fromZero
-          />
-          <View style={styles.legend}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: "#4f8cff" }]} />
-              <Text style={styles.legendText}>X-axis</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: "#00e676" }]} />
-              <Text style={styles.legendText}>Y-axis</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: "#ffb300" }]} />
-              <Text style={styles.legendText}>Z-axis</Text>
-            </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <MaterialIcons name="error" size={40} color="#f44336" />
+            <Text style={styles.errorText}>Error loading data</Text>
+            <Text style={styles.errorSubtext}>{error}</Text>
           </View>
-        </View>
-        
-        {/* Acceleration Magnitude Card */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.subtitle}>Acceleration Magnitude</Text>
-            {isAccelMagAlert && (
-              <View style={styles.alertBadge}>
-                <MaterialIcons name="warning" size={16} color="#fff" />
-                <Text style={styles.alertText}>Threshold Exceeded</Text>
+        ) : (
+          <>
+            {/* IMU Info Card */}
+            <View style={styles.infoCard}>
+              <Text style={styles.infoTitle}>About IMU Sensors</Text>
+              <Text style={styles.infoText}>
+                The Inertial Measurement Unit (IMU) combines accelerometer and gyroscope 
+                sensors to track motion, orientation, and vibration patterns.
+              </Text>
+              <View style={styles.infoRow}>
+                <View style={styles.infoItem}>
+                  <FontAwesome5 name="tachometer-alt" size={20} color="#4f8cff" style={styles.infoIcon} />
+                  <Text style={styles.infoItemTitle}>Accelerometer</Text>
+                  <Text style={styles.infoItemText}>Measures linear acceleration forces in G (9.8 m/s²)</Text>
+                </View>
+                <View style={styles.infoItem}>
+                  <MaterialCommunityIcons name="rotate-3d" size={20} color="#00e676" style={styles.infoIcon} />
+                  <Text style={styles.infoItemTitle}>Gyroscope</Text>
+                  <Text style={styles.infoItemText}>Measures angular velocity in degrees per second</Text>
+                </View>
               </View>
-            )}
-          </View>
-          
-          <LineChart
-            data={accelMagChartData}
-            width={Math.min(width * 0.8, 340)}
-            height={180}
-            chartConfig={chartConfig}
-            bezier
-            style={styles.graph}
-            withInnerLines={false}
-            withOuterLines={true}
-            fromZero
-          />
-          
-          <Text style={styles.cardDescription}>
-            Combined magnitude of acceleration across all axes. Peaks may indicate 
-            significant movement or impacts.
-          </Text>
-        </View>
-        
-        {/* Gyroscope Card */}
-        <View style={styles.card}>
-          <Text style={styles.subtitle}>Gyroscope (X/Y/Z)</Text>
-          <LineChart
-            data={gyroChartData}
-            width={Math.min(width * 0.8, 340)}
-            height={180}
-            chartConfig={chartConfig}
-            bezier
-            style={styles.graph}
-            withInnerLines={false}
-            withOuterLines={true}
-            fromZero
-          />
-          <View style={styles.legend}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: "#ff5555" }]} />
-              <Text style={styles.legendText}>X-axis</Text>
             </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: "#00bcd4" }]} />
-              <Text style={styles.legendText}>Y-axis</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: "#c51162" }]} />
-              <Text style={styles.legendText}>Z-axis</Text>
-            </View>
-          </View>
-        </View>
-        
-        {/* Jerk Card */}
-        <View style={[styles.card, { marginBottom: 5 }]}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.subtitle}>Jerk (ΔGyro Mag)</Text>
-            {isJerkAlert && (
-              <View style={styles.alertBadge}>
-                <MaterialIcons name="warning" size={16} color="#fff" />
-                <Text style={styles.alertText}>Threshold Exceeded</Text>
+            
+            {/* Acceleration Card */}
+            <View style={styles.card}>
+              <Text style={styles.subtitle}>Accelerometer (X/Y/Z)</Text>
+              <LineChart
+                data={accelChartData}
+                width={Math.min(width * 0.8, 340)}
+                height={180}
+                chartConfig={chartConfig}
+                bezier
+                style={styles.graph}
+                withInnerLines={false}
+                withOuterLines={true}
+                fromZero
+              />
+              <View style={styles.legend}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendColor, { backgroundColor: "#4f8cff" }]} />
+                  <Text style={styles.legendText}>X-axis</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendColor, { backgroundColor: "#00e676" }]} />
+                  <Text style={styles.legendText}>Y-axis</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendColor, { backgroundColor: "#ffb300" }]} />
+                  <Text style={styles.legendText}>Z-axis</Text>
+                </View>
               </View>
-            )}
-          </View>
-          
-          <LineChart
-            data={jerkChartData}
-            width={Math.min(width * 0.8, 340)}
-            height={180}
-            chartConfig={chartConfig}
-            bezier
-            style={styles.graph}
-            withInnerLines={false}
-            withOuterLines={true}
-            fromZero
-          />
-          
-          <Text style={styles.cardDescription}>
-            Jerk represents sudden changes in rotation rate. High values may indicate 
-            abrupt direction changes or vibration events.
-          </Text>
-        </View>
+            </View>
+            
+            {/* Acceleration Magnitude Card */}
+            <View style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.subtitle}>Acceleration Magnitude</Text>
+                {isAccelMagAlert && (
+                  <View style={styles.alertBadge}>
+                    <MaterialIcons name="warning" size={16} color="#fff" />
+                    <Text style={styles.alertText}>Threshold Exceeded</Text>
+                  </View>
+                )}
+              </View>
+              
+              <LineChart
+                data={accelMagChartData}
+                width={Math.min(width * 0.8, 340)}
+                height={180}
+                chartConfig={chartConfig}
+                bezier
+                style={styles.graph}
+                withInnerLines={false}
+                withOuterLines={true}
+                fromZero
+              />
+              
+              <Text style={styles.cardDescription}>
+                Combined magnitude of acceleration across all axes. Peaks may indicate 
+                significant movement or impacts.
+              </Text>
+            </View>
+            
+            {/* Gyroscope Card */}
+            <View style={styles.card}>
+              <Text style={styles.subtitle}>Gyroscope (X/Y/Z)</Text>
+              <LineChart
+                data={gyroChartData}
+                width={Math.min(width * 0.8, 340)}
+                height={180}
+                chartConfig={chartConfig}
+                bezier
+                style={styles.graph}
+                withInnerLines={false}
+                withOuterLines={true}
+                fromZero
+              />
+              <View style={styles.legend}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendColor, { backgroundColor: "#ff5555" }]} />
+                  <Text style={styles.legendText}>X-axis</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendColor, { backgroundColor: "#00bcd4" }]} />
+                  <Text style={styles.legendText}>Y-axis</Text>
+                </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendColor, { backgroundColor: "#c51162" }]} />
+                  <Text style={styles.legendText}>Z-axis</Text>
+                </View>
+              </View>
+            </View>
+            
+            {/* Jerk Card */}
+            <View style={[styles.card, { marginBottom: 5 }]}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.subtitle}>Jerk (ΔGyro Mag)</Text>
+                {isJerkAlert && (
+                  <View style={styles.alertBadge}>
+                    <MaterialIcons name="warning" size={16} color="#fff" />
+                    <Text style={styles.alertText}>Threshold Exceeded</Text>
+                  </View>
+                )}
+              </View>
+              
+              <LineChart
+                data={jerkChartData}
+                width={Math.min(width * 0.8, 340)}
+                height={180}
+                chartConfig={chartConfig}
+                bezier
+                style={styles.graph}
+                withInnerLines={false}
+                withOuterLines={true}
+                fromZero
+              />
+              
+              <Text style={styles.cardDescription}>
+                Jerk represents sudden changes in rotation rate. High values may indicate 
+                abrupt direction changes or vibration events.
+              </Text>
+            </View>
+          </>
+        )}
       </ScrollView>
       
       {/* Floating Navbar */}
@@ -614,6 +747,58 @@ const styles = StyleSheet.create({
   },
   activeNavText: {
     color: "#ffffff",
+  },
+  lastUpdatedContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(34, 40, 57, 0.8)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginTop: 4,
+    zIndex: 1,
+  },
+  lastUpdatedText: {
+    color: '#bfc9d1',
+    fontSize: 12,
+    marginLeft: 6,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+    backgroundColor: 'rgba(34, 40, 57, 0.95)',
+    borderRadius: 24,
+    width: '85%',
+    marginTop: 20,
+  },
+  loadingText: {
+    color: '#bfc9d1',
+    marginTop: 12,
+    fontSize: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+    backgroundColor: 'rgba(34, 40, 57, 0.95)',
+    borderRadius: 24,
+    width: '85%',
+    marginTop: 20,
+  },
+  errorText: {
+    color: '#f44336',
+    marginTop: 12,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  errorSubtext: {
+    color: '#bfc9d1',
+    marginTop: 8,
+    fontSize: 14,
+    textAlign: 'center',
   },
 });
 

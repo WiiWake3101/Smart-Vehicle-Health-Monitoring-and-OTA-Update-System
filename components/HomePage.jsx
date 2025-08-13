@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, ScrollView, ActivityIndicator } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { MaterialCommunityIcons, FontAwesome5, Ionicons, Feather, MaterialIcons, AntDesign } from "@expo/vector-icons";
+import { supabase } from "../lib/supabase";
 
 const { width, height } = Dimensions.get("window");
-const MAX_SPEED = 120; // Adjust as needed
+const MAX_SPEED = 120;
 
 const HomePage = () => {
   const navigation = useNavigation();
@@ -14,78 +15,251 @@ const HomePage = () => {
 
   const [deviceData, setDeviceData] = useState({
     speed: 0,
-    temperature: 24.5,
-    humidity: 58,
-    batteryLevel: 82,
-    lastSyncTime: "2025-08-10 15:30",
-    firmware: "v1.2.3",
-    status: "Online"
+    temperature: 0,
+    humidity: 0,
+    lastSyncTime: null,
+    status: "Offline"
   });
 
-  // Add trip statistics state
   const [tripStats, setTripStats] = useState({
-    todayDistance: 45.7,
-    weekDistance: 187.3,
-    avgSpeed: 57,
-    drivingTime: 126, // minutes
-    fuelEfficiency: 14.2 // km/l
+    todayDistance: 0,
+    weekDistance: 0,
+    avgSpeed: 0,
+    drivingTime: 0, // minutes
+    fuelEfficiency: 0 // km/l
   });
 
-  // Add alerts state
-  const [alerts, setAlerts] = useState([
-    {
-      id: 1,
-      type: "warning",
-      message: "Engine temperature slightly elevated",
-      time: "1 hour ago",
-      read: false
-    },
-    {
-      id: 2,
-      type: "info",
-      message: "Firmware update available (v1.2.4)",
-      time: "5 hours ago",
-      read: true
-    },
-    {
-      id: 3,
-      type: "critical",
-      message: "Low tire pressure detected (front-right)",
-      time: "Today, 10:30 AM",
-      read: false
-    }
-  ]);
+  const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Simulate live data updates
+  // Fetch initial data and set up subscription
   useEffect(() => {
-    const interval = setInterval(() => {
-      setDeviceData(prev => ({
-        ...prev,
-        speed: Math.floor(Math.random() * 121),
-        temperature: parseFloat((Math.random() * 5 + 22).toFixed(1)),
-        humidity: Math.floor(Math.random() * 20 + 50),
-        batteryLevel: prev.batteryLevel > 20 ? prev.batteryLevel - 1 : 100
-      }));
-      
-      // Occasionally update trip stats
-      if (Math.random() > 0.7) {
-        setTripStats(prev => ({
-          ...prev,
-          todayDistance: parseFloat((prev.todayDistance + Math.random() * 0.3).toFixed(1)),
-          avgSpeed: Math.max(40, Math.min(80, prev.avgSpeed + (Math.random() > 0.5 ? 1 : -1))),
-          drivingTime: prev.drivingTime + 1
-        }));
+    let subscription;
+    
+    const fetchInitialData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch most recent sensor data
+        const { data, error } = await supabase
+          .from('sensor_data')
+          .select('speed, temperature, humidity, time')
+          .eq('user_id', userId)
+          .order('time', { ascending: false })
+          .limit(1);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          const latestReading = data[0];
+          
+          setDeviceData({
+            speed: latestReading.speed || 0,
+            temperature: latestReading.temperature || 0,
+            humidity: latestReading.humidity || 0,
+            lastSyncTime: new Date(latestReading.time).toLocaleString(),
+            status: "Online"
+          });
+        }
+        
+        // Calculate trip statistics
+        await calculateTripStats();
+        
+        // Generate some sample alerts based on data
+        generateAlerts(data && data.length > 0 ? data[0] : null);
+        
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        setError(err.message);
+        setLoading(false);
       }
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
+    };
+    
+    const calculateTripStats = async () => {
+      try {
+        // Get today's date at midnight
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Get start of week
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay());
+        
+        // Fetch data from today
+        const { data: todayData, error: todayError } = await supabase
+          .from('sensor_data')
+          .select('speed, time, latitude, longitude')
+          .eq('user_id', userId)
+          .gte('time', today.toISOString())
+          .order('time', { ascending: true });
+        
+        if (todayError) throw todayError;
+        
+        // Fetch data from this week
+        const { data: weekData, error: weekError } = await supabase
+          .from('sensor_data')
+          .select('speed, time, latitude, longitude')
+          .eq('user_id', userId)
+          .gte('time', startOfWeek.toISOString())
+          .order('time', { ascending: true });
+        
+        if (weekError) throw weekError;
+        
+        // Calculate distance, average speed, and driving time
+        const todayStats = calculateStats(todayData || []);
+        const weekStats = calculateStats(weekData || []);
+        
+        setTripStats({
+          todayDistance: todayStats.distance,
+          weekDistance: weekStats.distance,
+          avgSpeed: todayStats.avgSpeed,
+          drivingTime: todayStats.drivingTime,
+          fuelEfficiency: (Math.random() * 5 + 10).toFixed(1) // Sample fuel efficiency (would need actual fuel data)
+        });
+        
+      } catch (err) {
+        console.error("Error calculating trip stats:", err);
+      }
+    };
+    
+    const calculateStats = (data) => {
+      if (!data || data.length < 2) {
+        return { distance: 0, avgSpeed: 0, drivingTime: 0 };
+      }
+      
+      let totalDistance = 0;
+      let totalSpeed = 0;
+      let validSpeedReadings = 0;
+      
+      // Calculate distance from GPS coordinates and average speed
+      for (let i = 1; i < data.length; i++) {
+        if (data[i].latitude && data[i].longitude && data[i-1].latitude && data[i-1].longitude) {
+          totalDistance += calculateDistance(
+            data[i-1].latitude, data[i-1].longitude,
+            data[i].latitude, data[i].longitude
+          );
+        }
+        
+        if (data[i].speed) {
+          totalSpeed += data[i].speed;
+          validSpeedReadings++;
+        }
+      }
+      
+      // Estimate driving time (approx)
+      const firstTimestamp = new Date(data[0].time);
+      const lastTimestamp = new Date(data[data.length - 1].time);
+      const timeDiffMinutes = (lastTimestamp - firstTimestamp) / (1000 * 60);
+      
+      // Filter out idle time (simple approximation)
+      const drivingTime = Math.max(1, Math.round(timeDiffMinutes * 0.7));
+      
+      return {
+        distance: parseFloat(totalDistance.toFixed(1)),
+        avgSpeed: Math.round(validSpeedReadings > 0 ? totalSpeed / validSpeedReadings : 0),
+        drivingTime: drivingTime
+      };
+    };
+    
+    // Calculate distance between two coordinates using Haversine formula
+    const calculateDistance = (lat1, lon1, lat2, lon2) => {
+      const R = 6371; // Radius of the earth in km
+      const dLat = deg2rad(lat2 - lat1);
+      const dLon = deg2rad(lon2 - lon1);
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+      const distance = R * c; // Distance in km
+      return distance;
+    };
+    
+    const deg2rad = (deg) => {
+      return deg * (Math.PI/180);
+    };
+    
+    const generateAlerts = (data) => {
+      const sampleAlerts = [];
+      
+      // Add system alert
+      sampleAlerts.push({
+        id: 1,
+        type: "info",
+        message: "Supabase connection established",
+        time: "Just now",
+        read: false
+      });
+      
+      // Add alert based on temperature if available
+      if (data && data.temperature) {
+        if (data.temperature > 27) {
+          sampleAlerts.push({
+            id: 2,
+            type: "warning",
+            message: "High temperature detected: " + data.temperature.toFixed(1) + "°C",
+            time: "5 min ago",
+            read: false
+          });
+        }
+      }
+      
+      // Add default maintenance reminder
+      sampleAlerts.push({
+        id: 3,
+        type: "info",
+        message: "Scheduled maintenance coming up next week",
+        time: "Yesterday",
+        read: true
+      });
+      
+      setAlerts(sampleAlerts);
+    };
+    
+    const setupRealtimeSubscription = async () => {
+      // Subscribe to changes on the sensor_data table for this user
+      subscription = supabase
+        .channel('dashboard_updates')
+        .on('postgres_changes', 
+          { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'sensor_data',
+            filter: `user_id=eq.${userId}`
+          }, 
+          (payload) => {
+            const newReading = payload.new;
+            
+            // Update current readings with latest data
+            setDeviceData(prev => ({
+              speed: newReading.speed || prev.speed,
+              temperature: newReading.temperature || prev.temperature,
+              humidity: newReading.humidity || prev.humidity,
+              lastSyncTime: new Date(newReading.time).toLocaleString(),
+              status: "Online"
+            }));
+            
+            // Recalculate trip stats periodically (not on every update to avoid excessive calculations)
+            if (Math.random() > 0.7) {
+              calculateTripStats();
+            }
+          }
+        )
+        .subscribe();
+    };
 
-  // Function to determine battery status color
-  const getBatteryColor = (level) => {
-    if (level > 50) return "#4CAF50"; // Good - green
-    if (level > 20) return "#FFC107"; // Warning - yellow
-    return "#F44336"; // Critical - red
-  };
+    fetchInitialData();
+    setupRealtimeSubscription();
+
+    // Clean up subscription on unmount
+    return () => {
+      if (subscription) {
+        supabase.removeChannel(subscription);
+      }
+    };
+  }, [userId]);
 
   // Function to format minutes into hours and minutes
   const formatDrivingTime = (minutes) => {
@@ -132,113 +306,130 @@ const HomePage = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Status Card with Status Indicator */}
-        <View style={styles.statusCard}>
-          <View style={styles.statusHeader}>
-            <View style={styles.statusIndicator}>
-              <View style={[styles.statusDot, {backgroundColor: "#4CAF50"}]} />
-              <Text style={styles.statusText}>{deviceData.status}</Text>
-            </View>
-            {/* Battery container removed */}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#4f8cff" />
+            <Text style={styles.loadingText}>Loading dashboard data...</Text>
           </View>
-          
-          <View style={styles.statusRow}>
-            <View style={styles.statusItem}>
-              <MaterialCommunityIcons name="speedometer" size={22} color="#4f8cff" />
-              <Text style={styles.statusItemValue}>{deviceData.speed}</Text>
-              <Text style={styles.statusItemLabel}>km/h</Text>
-            </View>
-            
-            <View style={styles.statusItem}>
-              <MaterialCommunityIcons name="thermometer" size={22} color="#FFC107" />
-              <Text style={styles.statusItemValue}>{deviceData.temperature}</Text>
-              <Text style={styles.statusItemLabel}>°C</Text>
-            </View>
-            
-            <View style={styles.statusItem}>
-              <MaterialCommunityIcons name="water-percent" size={22} color="#2196F3" />
-              <Text style={styles.statusItemValue}>{deviceData.humidity}</Text>
-              <Text style={styles.statusItemLabel}>%</Text>
-            </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <MaterialIcons name="error-outline" size={40} color="#f44336" />
+            <Text style={styles.errorText}>Error loading data</Text>
+            <Text style={styles.errorSubtext}>{error}</Text>
           </View>
-        </View>
-      
-        {/* Trip Summary Card */}
-        <View style={styles.tripSummaryCard}>
-          <View style={styles.tripSummaryHeader}>
-            <MaterialCommunityIcons name="car-clock" size={22} color="#4f8cff" />
-            <Text style={styles.sectionTitle}>Trip Summary</Text>
-          </View>
-          
-          <View style={styles.tripMetricsRow}>
-            <View style={styles.tripMetric}>
-              <Text style={styles.tripMetricValue}>{tripStats.todayDistance} km</Text>
-              <Text style={styles.tripMetricLabel}>Today</Text>
-            </View>
-            <View style={styles.tripMetric}>
-              <Text style={styles.tripMetricValue}>{tripStats.weekDistance} km</Text>
-              <Text style={styles.tripMetricLabel}>This Week</Text>
-            </View>
-          </View>
-          
-          <View style={styles.tripDetailsRow}>
-            <View style={styles.tripDetailItem}>
-              <MaterialCommunityIcons name="speedometer" size={16} color="#bfc9d1" />
-              <Text style={styles.tripDetailLabel}>Avg Speed:</Text>
-              <Text style={styles.tripDetailValue}>{tripStats.avgSpeed} km/h</Text>
-            </View>
-            <View style={styles.tripDetailItem}>
-              <MaterialIcons name="timer" size={16} color="#bfc9d1" />
-              <Text style={styles.tripDetailLabel}>Drive Time:</Text>
-              <Text style={styles.tripDetailValue}>{formatDrivingTime(tripStats.drivingTime)}</Text>
-            </View>
-          </View>
-          
-          <View style={styles.tripDetailsRow}>
-            <View style={styles.tripDetailItem}>
-              <MaterialCommunityIcons name="gas-station" size={16} color="#bfc9d1" />
-              <Text style={styles.tripDetailLabel}>Efficiency:</Text>
-              <Text style={styles.tripDetailValue}>{tripStats.fuelEfficiency} km/l</Text>
-            </View>
-            <TouchableOpacity style={styles.viewTripDetailsButton}>
-              <Text style={styles.viewTripDetailsText}>View Details</Text>
-              <AntDesign name="right" size={12} color="#4f8cff" />
-            </TouchableOpacity>
-          </View>
-        </View>
-        
-        {/* Alerts and Notifications Card */}
-        <View style={styles.alertsCard}>
-          <View style={styles.alertsHeader}>
-            <View style={styles.alertsHeaderLeft}>
-              <MaterialIcons name="notifications" size={22} color="#4f8cff" />
-              <Text style={styles.sectionTitle}>Alerts & Notifications</Text>
-            </View>
-            <TouchableOpacity style={styles.markAllReadButton}>
-              <Text style={styles.markAllReadText}>Mark all read</Text>
-            </TouchableOpacity>
-          </View>
-          
-          {alerts.map(alert => {
-            const typeInfo = getAlertTypeInfo(alert.type);
-            return (
-              <View key={alert.id} style={[styles.alertItem, alert.read ? styles.alertItemRead : null]}>
-                <View style={styles.alertIconContainer}>
-                  <MaterialIcons name={typeInfo.icon} size={20} color={typeInfo.color} />
+        ) : (
+          <>
+            {/* Status Card with Status Indicator */}
+            <View style={styles.statusCard}>
+              <View style={styles.statusHeader}>
+                <View style={styles.statusIndicator}>
+                  <View style={[styles.statusDot, {backgroundColor: deviceData.status === "Online" ? "#4CAF50" : "#F44336"}]} />
+                  <Text style={styles.statusText}>{deviceData.status}</Text>
                 </View>
-                <View style={styles.alertContent}>
-                  <Text style={styles.alertMessage}>{alert.message}</Text>
-                  <Text style={styles.alertTime}>{alert.time}</Text>
-                </View>
-                {!alert.read && <View style={styles.unreadIndicator} />}
+                {deviceData.lastSyncTime && (
+                  <Text style={styles.lastSyncText}>Last sync: {deviceData.lastSyncTime}</Text>
+                )}
               </View>
-            );
-          })}
+              
+              <View style={styles.statusRow}>
+                <View style={styles.statusItem}>
+                  <MaterialCommunityIcons name="speedometer" size={22} color="#4f8cff" />
+                  <Text style={styles.statusItemValue}>{Math.round(deviceData.speed)}</Text>
+                  <Text style={styles.statusItemLabel}>km/h</Text>
+                </View>
+                
+                <View style={styles.statusItem}>
+                  <MaterialCommunityIcons name="thermometer" size={22} color="#FFC107" />
+                  <Text style={styles.statusItemValue}>{deviceData.temperature.toFixed(1)}</Text>
+                  <Text style={styles.statusItemLabel}>°C</Text>
+                </View>
+                
+                <View style={styles.statusItem}>
+                  <MaterialCommunityIcons name="water-percent" size={22} color="#2196F3" />
+                  <Text style={styles.statusItemValue}>{Math.round(deviceData.humidity)}</Text>
+                  <Text style={styles.statusItemLabel}>%</Text>
+                </View>
+              </View>
+            </View>
           
-          <TouchableOpacity style={styles.viewAllAlertsButton}>
-            <Text style={styles.viewAllAlertsText}>View All Notifications</Text>
-          </TouchableOpacity>
-        </View>
+            {/* Trip Summary Card */}
+            <View style={styles.tripSummaryCard}>
+              <View style={styles.tripSummaryHeader}>
+                <MaterialCommunityIcons name="car-clock" size={22} color="#4f8cff" />
+                <Text style={styles.sectionTitle}>Trip Summary</Text>
+              </View>
+              
+              <View style={styles.tripMetricsRow}>
+                <View style={styles.tripMetric}>
+                  <Text style={styles.tripMetricValue}>{tripStats.todayDistance} km</Text>
+                  <Text style={styles.tripMetricLabel}>Today</Text>
+                </View>
+                <View style={styles.tripMetric}>
+                  <Text style={styles.tripMetricValue}>{tripStats.weekDistance} km</Text>
+                  <Text style={styles.tripMetricLabel}>This Week</Text>
+                </View>
+              </View>
+              
+              <View style={styles.tripDetailsRow}>
+                <View style={styles.tripDetailItem}>
+                  <MaterialCommunityIcons name="speedometer" size={16} color="#bfc9d1" />
+                  <Text style={styles.tripDetailLabel}>Avg Speed:</Text>
+                  <Text style={styles.tripDetailValue}>{tripStats.avgSpeed} km/h</Text>
+                </View>
+                <View style={styles.tripDetailItem}>
+                  <MaterialIcons name="timer" size={16} color="#bfc9d1" />
+                  <Text style={styles.tripDetailLabel}>Drive Time:</Text>
+                  <Text style={styles.tripDetailValue}>{formatDrivingTime(tripStats.drivingTime)}</Text>
+                </View>
+              </View>
+              
+              <View style={styles.tripDetailsRow}>
+                <View style={styles.tripDetailItem}>
+                  <MaterialCommunityIcons name="gas-station" size={16} color="#bfc9d1" />
+                  <Text style={styles.tripDetailLabel}>Efficiency:</Text>
+                  <Text style={styles.tripDetailValue}>{tripStats.fuelEfficiency} km/l</Text>
+                </View>
+                <TouchableOpacity style={styles.viewTripDetailsButton}>
+                  <Text style={styles.viewTripDetailsText}>View Details</Text>
+                  <AntDesign name="right" size={12} color="#4f8cff" />
+                </TouchableOpacity>
+              </View>
+            </View>
+            
+            {/* Alerts and Notifications Card */}
+            <View style={styles.alertsCard}>
+              <View style={styles.alertsHeader}>
+                <View style={styles.alertsHeaderLeft}>
+                  <MaterialIcons name="notifications" size={22} color="#4f8cff" />
+                  <Text style={styles.sectionTitle}>Alerts & Notifications</Text>
+                </View>
+                <TouchableOpacity style={styles.markAllReadButton}>
+                  <Text style={styles.markAllReadText}>Mark all read</Text>
+                </TouchableOpacity>
+              </View>
+              
+              {alerts.map(alert => {
+                const typeInfo = getAlertTypeInfo(alert.type);
+                return (
+                  <View key={alert.id} style={[styles.alertItem, alert.read ? styles.alertItemRead : null]}>
+                    <View style={styles.alertIconContainer}>
+                      <MaterialIcons name={typeInfo.icon} size={20} color={typeInfo.color} />
+                    </View>
+                    <View style={styles.alertContent}>
+                      <Text style={styles.alertMessage}>{alert.message}</Text>
+                      <Text style={styles.alertTime}>{alert.time}</Text>
+                    </View>
+                    {!alert.read && <View style={styles.unreadIndicator} />}
+                  </View>
+                );
+              })}
+              
+              <TouchableOpacity style={styles.viewAllAlertsButton}>
+                <Text style={styles.viewAllAlertsText}>View All Notifications</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
       </ScrollView>
       
       {/* Floating Navbar */}
@@ -652,6 +843,47 @@ const styles = StyleSheet.create({
     color: "#4f8cff",
     fontSize: 13,
     fontWeight: "500",
+  },
+  lastSyncText: {
+    color: "#bfc9d1",
+    fontSize: 12,
+  },
+  loadingContainer: {
+    backgroundColor: "rgba(34, 40, 57, 0.95)",
+    borderRadius: 24,
+    width: "90%",
+    maxWidth: 380,
+    padding: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 20,
+  },
+  loadingText: {
+    color: "#bfc9d1",
+    marginTop: 16,
+    fontSize: 16,
+  },
+  errorContainer: {
+    backgroundColor: "rgba(34, 40, 57, 0.95)",
+    borderRadius: 24,
+    width: "90%",
+    maxWidth: 380,
+    padding: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 20,
+  },
+  errorText: {
+    color: "#f44336",
+    marginTop: 12,
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  errorSubtext: {
+    color: "#bfc9d1",
+    marginTop: 8,
+    fontSize: 14,
+    textAlign: "center",
   },
 });
 

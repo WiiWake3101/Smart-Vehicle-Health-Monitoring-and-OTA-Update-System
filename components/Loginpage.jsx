@@ -1,35 +1,123 @@
-import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, Image, Linking, StyleSheet, Dimensions } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { supabase } from "../lib/supabase";
 import { useNavigation } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width, height } = Dimensions.get("window");
 
 const Loginpage = () => {
-  
   const navigation = useNavigation();
+  
   // State for Supabase auth
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
+
+  // Check for existing session on component mount
+  useEffect(() => {
+    checkSession();
+  }, []);
+
+  // Function to check if user is already logged in
+  const checkSession = async () => {
+    try {
+      setLoading(true);
+      
+      // Get the current session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error("Session error:", sessionError);
+        setInitialCheckDone(true);
+        setLoading(false);
+        return;
+      }
+      
+      if (session) {
+        // Session exists, navigate to Home
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Home', params: { userId: session.user.id } }],
+        });
+      } else {
+        // No session, stay on login page
+        setInitialCheckDone(true);
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error("Error checking session:", error);
+      setInitialCheckDone(true);
+      setLoading(false);
+    }
+  };
 
   // Supabase email/password sign-in
   const handleLogin = async () => {
-    setError('');
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) {
-      alert("Incorrect email or password. Please try again.");
-    } else {
-      // Fetch user id from auth response
-      const userId = data?.user?.id;
-      alert("Login successful!");
-      navigation.navigate("Home", { userId }); // Pass userId to Home
+    if (!email || !password) {
+      setError('Please enter both email and password');
+      return;
+    }
+    
+    try {
+      setError('');
+      setLoading(true);
+      
+      // Sign in with email and password
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) {
+        console.error("Login error:", error);
+        setError(error.message || "Incorrect email or password. Please try again.");
+        setLoading(false);
+        return;
+      }
+      
+      // Successful login, store session in secure storage
+      if (data?.session) {
+        try {
+          // Store auth token in AsyncStorage
+          await AsyncStorage.setItem('supabase-auth', JSON.stringify({
+            access_token: data.session.access_token,
+            refresh_token: data.session.refresh_token
+          }));
+          
+          // Navigate to home screen
+          const userId = data.user.id;
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Home', params: { userId } }],
+          });
+        } catch (storageError) {
+          console.error("Storage error:", storageError);
+          setError("Could not save session. Please try again.");
+        }
+      } else {
+        setError("Login successful but no session created. Please try again.");
+      }
+    } catch (e) {
+      console.error("Unexpected error:", e);
+      setError("An unexpected error occurred. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
+
+  // Show loading indicator until initial session check is complete
+  if (!initialCheckDone && loading) {
+    return (
+      <View style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#4f8cff" />
+        <Text style={styles.loadingText}>Checking session...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -62,6 +150,7 @@ const Loginpage = () => {
             onChangeText={setEmail}
             autoCapitalize="none"
             keyboardType="email-address"
+            editable={!loading}
           />
           <TextInput
             placeholder="Password"
@@ -70,14 +159,16 @@ const Loginpage = () => {
             style={styles.input}
             value={password}
             onChangeText={setPassword}
+            editable={!loading}
           />
           {error ? (
-            <Text style={{ color: "red", marginBottom: 8 }}>{error}</Text>
+            <Text style={styles.errorText}>{error}</Text>
           ) : null}
           <TouchableOpacity
-            style={styles.loginBtnContainer}
+            style={[styles.loginBtnContainer, loading && styles.disabledButton]}
             onPress={handleLogin}
             activeOpacity={0.8}
+            disabled={loading}
           >
             <LinearGradient
               colors={["#4f8cff", "#3358d1"]}
@@ -85,7 +176,11 @@ const Loginpage = () => {
               end={[1, 0]}
               style={styles.loginBtn}
             >
-              <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>Login</Text>
+              {loading ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={{ color: "#fff", fontWeight: "bold", fontSize: 16 }}>Login</Text>
+              )}
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -215,6 +310,23 @@ const styles = StyleSheet.create({
     color: "#bfc9d1",
     fontSize: 15,
     textAlign: "center",
+  },
+  errorText: {
+    color: "#ff6b6b",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  disabledButton: {
+    opacity: 0.7,
+  },
+  loadingContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    color: "#fff",
+    marginTop: 12,
+    fontSize: 16,
   },
 });
 

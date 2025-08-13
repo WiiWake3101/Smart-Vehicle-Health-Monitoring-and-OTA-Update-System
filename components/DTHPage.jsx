@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, ScrollView, ActivityIndicator } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { MaterialCommunityIcons, FontAwesome5, Ionicons, Feather, FontAwesome } from "@expo/vector-icons";
+import { supabase } from "../lib/supabase";
+import { LineChart } from "react-native-chart-kit";
 
 const { width, height } = Dimensions.get("window");
 
@@ -11,39 +13,120 @@ const DTHPage = () => {
   const route = useRoute();
   const userId = route.params?.userId;
 
-  // Dummy data - will be replaced with Supabase integration later
+  // State for temperature and humidity data
   const [currentReadings, setCurrentReadings] = useState({
-    temperature: 25.4,
-    humidity: 62,
-    lastUpdated: "2 sec ago"
+    temperature: 0,
+    humidity: 0,
+    lastUpdated: null
   });
 
-  const [historicalData, setHistoricalData] = useState([
-    { time: "12:00", temperature: 23.5, humidity: 58 },
-    { time: "13:00", temperature: 24.2, humidity: 60 },
-    { time: "14:00", temperature: 25.0, humidity: 61 },
-    { time: "15:00", temperature: 25.4, humidity: 62 },
-    { time: "16:00", temperature: 25.6, humidity: 63 },
-    { time: "17:00", temperature: 24.8, humidity: 65 },
-  ]);
+  const [historicalData, setHistoricalData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Simulate live updates (replace with Supabase subscription later)
+  // Fetch data and set up real-time subscription
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Simulate temperature between 20 and 30°C
-      const newTemp = (Math.random() * 10 + 20).toFixed(1);
-      // Simulate humidity between 40 and 80%
-      const newHumidity = Math.floor(Math.random() * 40 + 40);
-      
-      setCurrentReadings({
-        temperature: parseFloat(newTemp),
-        humidity: newHumidity,
-        lastUpdated: "2 sec ago"
-      });
-    }, 3000);
-    
-    return () => clearInterval(interval);
-  }, []);
+    let subscription;
+
+    const fetchCurrentData = async () => {
+      try {
+        setLoading(true);
+
+        // Fetch most recent reading for this user
+        const { data, error } = await supabase
+          .from('sensor_data')
+          .select('temperature, humidity, time')
+          .eq('user_id', userId)
+          .order('time', { ascending: false })
+          .limit(1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          const lastReading = data[0];
+          setCurrentReadings({
+            temperature: parseFloat(lastReading.temperature),
+            humidity: parseFloat(lastReading.humidity),
+            lastUpdated: new Date(lastReading.time).toLocaleTimeString()
+          });
+        }
+
+        // Fetch historical data for today
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const { data: histData, error: histError } = await supabase
+          .from('sensor_data')
+          .select('temperature, humidity, time')
+          .eq('user_id', userId)
+          .gte('time', today.toISOString())
+          .order('time', { ascending: false })
+          .limit(24); // Get readings for a day
+
+        if (histError) throw histError;
+
+        if (histData && histData.length > 0) {
+          // Format historical data for display
+          const formattedData = histData.map(item => ({
+            time: new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            temperature: parseFloat(item.temperature).toFixed(1),
+            humidity: Math.round(parseFloat(item.humidity))
+          }));
+
+          setHistoricalData(formattedData);
+        }
+
+        setLoading(false);
+      } catch (err) {
+        console.error("Error fetching DTH data:", err);
+        setError(err.message);
+        setLoading(false);
+      }
+    };
+
+    const setupRealtimeSubscription = async () => {
+      // Subscribe to changes on the sensor_data table for this user
+      subscription = supabase
+        .channel('dth_sensor_changes')
+        .on('postgres_changes', 
+          { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'sensor_data',
+            filter: `user_id=eq.${userId}`
+          }, 
+          (payload) => {
+            const newReading = payload.new;
+            
+            // Update current readings with latest data
+            setCurrentReadings({
+              temperature: parseFloat(newReading.temperature),
+              humidity: parseFloat(newReading.humidity),
+              lastUpdated: new Date(newReading.time).toLocaleTimeString()
+            });
+            
+            // Add new reading to historical data
+            const formattedTime = new Date(newReading.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            setHistoricalData(prevData => [{
+              time: formattedTime,
+              temperature: parseFloat(newReading.temperature).toFixed(1),
+              humidity: Math.round(parseFloat(newReading.humidity))
+            }, ...prevData.slice(0, 5)]); // Keep only the most recent 6 readings
+          }
+        )
+        .subscribe();
+    };
+
+    fetchCurrentData();
+    setupRealtimeSubscription();
+
+    // Clean up subscription on unmount
+    return () => {
+      if (subscription) {
+        supabase.removeChannel(subscription);
+      }
+    };
+  }, [userId]);
 
   // Function to determine temperature color based on value
   const getTemperatureColor = (temp) => {
@@ -60,6 +143,61 @@ const DTHPage = () => {
     if (humidity < 70) return "#4CAF50"; // Good - green
     return "#2196F3"; // Humid - blue
   };
+
+  // Prepare chart data from historical readings
+  const prepareChartData = () => {
+    if (!historicalData || historicalData.length === 0) {
+      return null;
+    }
+
+    // We need to reverse the data for the chart (oldest to newest)
+    const chartData = [...historicalData].slice(0, 6).reverse();
+
+    return {
+      temperatureData: {
+        labels: chartData.map(item => item.time),
+        datasets: [
+          {
+            data: chartData.map(item => parseFloat(item.temperature)),
+            color: () => "#FFC107", // amber color for temperature
+            strokeWidth: 2,
+          }
+        ],
+        legend: ["Temperature (°C)"]
+      },
+      humidityData: {
+        labels: chartData.map(item => item.time),
+        datasets: [
+          {
+            data: chartData.map(item => parseFloat(item.humidity)),
+            color: () => "#2196F3", // blue color for humidity
+            strokeWidth: 2,
+          }
+        ],
+        legend: ["Humidity (%)"]
+      }
+    };
+  };
+
+  // Chart configuration
+  const chartConfig = {
+    backgroundGradientFrom: "#232946",
+    backgroundGradientTo: "#232946",
+    decimalPlaces: 1,
+    color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+    labelColor: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+    style: {
+      borderRadius: 16
+    },
+    propsForDots: {
+      r: "4",
+      strokeWidth: "2",
+      stroke: "#fafafa"
+    }
+  };
+
+  // Get chart data
+  const chartData = prepareChartData();
 
   return (
     <View style={styles.container}>
@@ -85,137 +223,199 @@ const DTHPage = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Current Readings Card */}
-        <View style={styles.readingsCard}>
-          <Text style={styles.cardTitle}>Current Readings</Text>
-          <Text style={styles.updateTime}>Last updated: {currentReadings.lastUpdated}</Text>
-          
-          <View style={styles.metricsContainer}>
-            {/* Temperature Display */}
-            <View style={styles.metricBox}>
-              <View style={styles.metricHeader}>
-                <MaterialCommunityIcons name="thermometer" size={24} color="#FFC107" />
-                <Text style={styles.metricTitle}>Temperature</Text>
-              </View>
-              
-              <View style={styles.gaugeContainer}>
-                <View style={[styles.gauge, { backgroundColor: getTemperatureColor(currentReadings.temperature) }]}>
-                  <Text style={styles.gaugeValue}>{currentReadings.temperature}°C</Text>
-                </View>
-              </View>
-              
-              <View style={styles.metricInfoRow}>
-                <Text style={styles.metricInfoLabel}>Status:</Text>
-                <Text style={[
-                  styles.metricInfoValue, 
-                  {color: getTemperatureColor(currentReadings.temperature)}
-                ]}>
-                  {currentReadings.temperature < 18 ? "Cold" : 
-                   currentReadings.temperature < 24 ? "Comfortable" :
-                   currentReadings.temperature < 28 ? "Warm" : "Hot"}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#4f8cff" />
+            <Text style={styles.loadingText}>Loading sensor data...</Text>
+          </View>
+        ) : error ? (
+          <View style={styles.errorContainer}>
+            <MaterialCommunityIcons name="alert-circle" size={40} color="#f44336" />
+            <Text style={styles.errorText}>Error loading data</Text>
+            <Text style={styles.errorSubtext}>{error}</Text>
+          </View>
+        ) : (
+          <>
+            {/* Current Readings Card */}
+            <View style={styles.readingsCard}>
+              <Text style={styles.cardTitle}>Current Readings</Text>
+              {currentReadings.lastUpdated && (
+                <Text style={styles.updateTime}>
+                  Last updated: {currentReadings.lastUpdated}
                 </Text>
+              )}
+              
+              <View style={styles.metricsContainer}>
+                {/* Temperature Display */}
+                <View style={styles.metricBox}>
+                  <View style={styles.metricHeader}>
+                    <MaterialCommunityIcons name="thermometer" size={24} color="#FFC107" />
+                    <Text style={styles.metricTitle}>Temperature</Text>
+                  </View>
+                  
+                  <View style={styles.gaugeContainer}>
+                    <View style={[styles.gauge, { backgroundColor: getTemperatureColor(currentReadings.temperature) }]}>
+                      <Text style={styles.gaugeValue}>{currentReadings.temperature.toFixed(1)}°C</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.metricInfoRow}>
+                    <Text style={styles.metricInfoLabel}>Status:</Text>
+                    <Text style={[
+                      styles.metricInfoValue, 
+                      {color: getTemperatureColor(currentReadings.temperature)}
+                    ]}>
+                      {currentReadings.temperature < 18 ? "Cold" : 
+                       currentReadings.temperature < 24 ? "Comfortable" :
+                       currentReadings.temperature < 28 ? "Warm" : "Hot"}
+                    </Text>
+                  </View>
+                </View>
+                
+                {/* Humidity Display */}
+                <View style={styles.metricBox}>
+                  <View style={styles.metricHeader}>
+                    <MaterialCommunityIcons name="water-percent" size={24} color="#2196F3" />
+                    <Text style={styles.metricTitle}>Humidity</Text>
+                  </View>
+                  
+                  <View style={styles.gaugeContainer}>
+                    <View style={[
+                      styles.gauge, 
+                      { backgroundColor: getHumidityColor(currentReadings.humidity) }
+                    ]}>
+                      <Text style={styles.gaugeValue}>{Math.round(currentReadings.humidity)}%</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.metricInfoRow}>
+                    <Text style={styles.metricInfoLabel}>Status:</Text>
+                    <Text style={[
+                      styles.metricInfoValue, 
+                      {color: getHumidityColor(currentReadings.humidity)}
+                    ]}>
+                      {currentReadings.humidity < 30 ? "Very Dry" : 
+                       currentReadings.humidity < 40 ? "Dry" :
+                       currentReadings.humidity < 70 ? "Comfortable" : "Humid"}
+                    </Text>
+                  </View>
+                </View>
               </View>
             </View>
             
-            {/* Humidity Display */}
-            <View style={styles.metricBox}>
-              <View style={styles.metricHeader}>
-                <MaterialCommunityIcons name="water-percent" size={24} color="#2196F3" />
-                <Text style={styles.metricTitle}>Humidity</Text>
+            {/* Sensor Info Card */}
+            <View style={styles.sensorInfoCard}>
+              <Text style={styles.cardTitle}>Sensor Information</Text>
+              
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Sensor Type:</Text>
+                <Text style={styles.infoValue}>DHT22 (AM2302)</Text>
               </View>
               
-              <View style={styles.gaugeContainer}>
-                <View style={[
-                  styles.gauge, 
-                  { backgroundColor: getHumidityColor(currentReadings.humidity) }
-                ]}>
-                  <Text style={styles.gaugeValue}>{currentReadings.humidity}%</Text>
-                </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Accuracy:</Text>
+                <Text style={styles.infoValue}>±0.5°C, ±2-5% RH</Text>
               </View>
               
-              <View style={styles.metricInfoRow}>
-                <Text style={styles.metricInfoLabel}>Status:</Text>
-                <Text style={[
-                  styles.metricInfoValue, 
-                  {color: getHumidityColor(currentReadings.humidity)}
-                ]}>
-                  {currentReadings.humidity < 30 ? "Very Dry" : 
-                   currentReadings.humidity < 40 ? "Dry" :
-                   currentReadings.humidity < 70 ? "Comfortable" : "Humid"}
-                </Text>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Range:</Text>
+                <Text style={styles.infoValue}>-40 to 80°C, 0-100% RH</Text>
               </View>
-            </View>
-          </View>
-        </View>
-        
-        {/* Sensor Info Card */}
-        <View style={styles.sensorInfoCard}>
-          <Text style={styles.cardTitle}>Sensor Information</Text>
-          
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Sensor Type:</Text>
-            <Text style={styles.infoValue}>DHT22 (AM2302)</Text>
-          </View>
-          
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Accuracy:</Text>
-            <Text style={styles.infoValue}>±0.5°C, ±2-5% RH</Text>
-          </View>
-          
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Range:</Text>
-            <Text style={styles.infoValue}>-40 to 80°C, 0-100% RH</Text>
-          </View>
-          
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Resolution:</Text>
-            <Text style={styles.infoValue}>0.1°C, 0.1% RH</Text>
-          </View>
-        </View>
-        
-        {/* Historical Data Card */}
-        <View style={styles.historyCard}>
-          <Text style={styles.cardTitle}>Historical Data</Text>
-          <Text style={styles.cardSubtitle}>Today's readings</Text>
-          
-          <View style={styles.chartPlaceholder}>
-            <Text style={styles.chartPlaceholderText}>Chart View</Text>
-            <Text style={styles.chartPlaceholderSubtext}>(Data visualization will be integrated here)</Text>
-          </View>
-          
-          <View style={styles.dataTable}>
-            <View style={styles.tableHeader}>
-              <Text style={styles.tableHeaderCell}>Time</Text>
-              <Text style={styles.tableHeaderCell}>Temp (°C)</Text>
-              <Text style={styles.tableHeaderCell}>Humidity (%)</Text>
+              
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Resolution:</Text>
+                <Text style={styles.infoValue}>0.1°C, 0.1% RH</Text>
+              </View>
             </View>
             
-            {historicalData.map((reading, index) => (
-              <View key={index} style={[
-                styles.tableRow,
-                index % 2 === 0 ? styles.evenRow : null
-              ]}>
-                <Text style={styles.tableCell}>{reading.time}</Text>
-                <Text style={[
-                  styles.tableCell, 
-                  {color: getTemperatureColor(reading.temperature)}
-                ]}>
-                  {reading.temperature}
-                </Text>
-                <Text style={[
-                  styles.tableCell,
-                  {color: getHumidityColor(reading.humidity)}
-                ]}>
-                  {reading.humidity}
-                </Text>
-              </View>
-            ))}
-          </View>
-          
-          <TouchableOpacity style={styles.viewMoreButton}>
-            <Text style={styles.viewMoreButtonText}>View Complete History</Text>
-          </TouchableOpacity>
-        </View>
+            {/* Historical Data Card */}
+            <View style={styles.historyCard}>
+              <Text style={styles.cardTitle}>Historical Data</Text>
+              <Text style={styles.cardSubtitle}>Today's readings</Text>
+              
+              {historicalData.length > 0 ? (
+                <View style={styles.chartsContainer}>
+                  {/* Temperature Chart */}
+                  <Text style={styles.chartTitle}>Temperature Trend</Text>
+                  <LineChart
+                    data={chartData.temperatureData}
+                    width={width * 0.8}
+                    height={180}
+                    chartConfig={{
+                      ...chartConfig,
+                      backgroundGradientFrom: "#2c3154",
+                      backgroundGradientTo: "#2c3154",
+                      color: (opacity = 1) => `rgba(255, 193, 7, ${opacity})`,
+                    }}
+                    bezier
+                    style={styles.chart}
+                  />
+                  
+                  {/* Humidity Chart */}
+                  <Text style={styles.chartTitle}>Humidity Trend</Text>
+                  <LineChart
+                    data={chartData.humidityData}
+                    width={width * 0.8}
+                    height={180}
+                    chartConfig={{
+                      ...chartConfig,
+                      backgroundGradientFrom: "#2c3154",
+                      backgroundGradientTo: "#2c3154",
+                      color: (opacity = 1) => `rgba(33, 150, 243, ${opacity})`,
+                    }}
+                    bezier
+                    style={styles.chart}
+                  />
+                </View>
+              ) : (
+                <View style={styles.chartPlaceholder}>
+                  <Text style={styles.chartPlaceholderText}>No Chart Data</Text>
+                  <Text style={styles.chartPlaceholderSubtext}>Waiting for sensor readings...</Text>
+                </View>
+              )}
+              
+              {/* Data Table */}
+              {historicalData.length > 0 ? (
+                <View style={styles.dataTable}>
+                  <View style={styles.tableHeader}>
+                    <Text style={styles.tableHeaderCell}>Time</Text>
+                    <Text style={styles.tableHeaderCell}>Temp (°C)</Text>
+                    <Text style={styles.tableHeaderCell}>Humidity (%)</Text>
+                  </View>
+                  
+                  {historicalData.map((reading, index) => (
+                    <View key={index} style={[
+                      styles.tableRow,
+                      index % 2 === 0 ? styles.evenRow : null
+                    ]}>
+                      <Text style={styles.tableCell}>{reading.time}</Text>
+                      <Text style={[
+                        styles.tableCell, 
+                        {color: getTemperatureColor(reading.temperature)}
+                      ]}>
+                        {reading.temperature}
+                      </Text>
+                      <Text style={[
+                        styles.tableCell,
+                        {color: getHumidityColor(reading.humidity)}
+                      ]}>
+                        {reading.humidity}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.noDataContainer}>
+                  <Text style={styles.noDataText}>No historical data available</Text>
+                </View>
+              )}
+              
+              <TouchableOpacity style={styles.viewMoreButton}>
+                <Text style={styles.viewMoreButtonText}>View Complete History</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
       </ScrollView>
       
       {/* Floating Navbar */}
@@ -436,6 +636,23 @@ const styles = StyleSheet.create({
     elevation: 8,
     marginBottom: 20,
   },
+  chartsContainer: {
+    marginBottom: 16,
+    width: "100%",
+  },
+  chartTitle: {
+    color: "#bfc9d1",
+    fontSize: 16,
+    fontWeight: "600",
+    marginTop: 10,
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  chart: {
+    borderRadius: 16,
+    marginVertical: 8,
+    paddingRight: 16,
+  },
   chartPlaceholder: {
     backgroundColor: "rgba(43, 51, 73, 0.7)",
     height: 180,
@@ -544,6 +761,54 @@ const styles = StyleSheet.create({
   activeNavText: {
     color: "#ffffff",
   },
+  loadingContainer: {
+    backgroundColor: "rgba(34, 40, 57, 0.95)",
+    borderRadius: 24,
+    width: "90%",
+    maxWidth: 380,
+    padding: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 20,
+  },
+  loadingText: {
+    color: "#bfc9d1",
+    marginTop: 16,
+    fontSize: 16,
+  },
+  errorContainer: {
+    backgroundColor: "rgba(34, 40, 57, 0.95)",
+    borderRadius: 24,
+    width: "90%",
+    maxWidth: 380,
+    padding: 30,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 20,
+  },
+  errorText: {
+    color: "#f44336",
+    marginTop: 12,
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  errorSubtext: {
+    color: "#bfc9d1",
+    marginTop: 8,
+    fontSize: 14,
+    textAlign: "center",
+  },
+  noDataContainer: {
+    backgroundColor: "rgba(43, 51, 73, 0.7)",
+    borderRadius: 12,
+    padding: 20,
+    alignItems: "center",
+    marginVertical: 16,
+  },
+  noDataText: {
+    color: "#bfc9d1",
+    fontSize: 15,
+  }
 });
 
 export default DTHPage;
