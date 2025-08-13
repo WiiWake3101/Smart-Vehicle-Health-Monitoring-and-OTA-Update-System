@@ -6,6 +6,8 @@ import signup from "./SignUp"
 import Home from "./Home";
 import IMU from "./IMU";
 import Profile from "./profile";
+import GPS from "./GPS"
+import DTH from "./DTH";
 
 const Stack = createNativeStackNavigator();
 
@@ -18,6 +20,8 @@ export default function Layout() {
       <Stack.Screen name="Home" component={Home} />
       <Stack.Screen name="IMU" component={IMU} />
       <Stack.Screen name="Profile" component={Profile} />
+      <Stack.Screen name="GPS" component={GPS} />
+      <Stack.Screen name="DTH" component={DTH} />
       {/* Add more Stack.Screen entries for other screens */}
     </Stack.Navigator>
   );

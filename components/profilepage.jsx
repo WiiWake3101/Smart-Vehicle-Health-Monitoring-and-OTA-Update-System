@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, ActivityIndicator, TextInput, Keyboard, TouchableWithoutFeedback } from "react-native";
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, ActivityIndicator, TextInput, Keyboard, TouchableWithoutFeedback, ScrollView } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { MaterialCommunityIcons, FontAwesome5, Ionicons, Feather } from "@expo/vector-icons";
@@ -102,116 +102,161 @@ const ProfilePage = () => {
           start={[0, 1]}
           end={[1, 0]}
         />
+        
         <Text style={styles.title}>Profile</Text>
-        <View style={styles.card}>
-          {loading ? (
-            <ActivityIndicator color="#4f8cff" size="large" />
-          ) : profile ? (
-            <>
-              <View style={styles.avatarContainer}>
-                <View style={styles.avatarCircle}>
-                  {/* Person SVG Icon inside the circle */}
-                  <Svg width={54} height={54} viewBox="0 0 54 54">
-                    <Circle cx="27" cy="27" r="27" fill="#4f8cff" />
-                    {/* Head */}
-                    <Circle cx="27" cy="20" r="8" fill="#fff" />
-                    {/* Body */}
-                    <Path
-                      d="M14 44c0-7.18 5.82-13 13-13s13 5.82 13 13"
-                      stroke="#fff"
-                      strokeWidth="3"
-                      fill="none"
-                      strokeLinecap="round"
+        
+        <ScrollView 
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.card}>
+            {loading ? (
+              <ActivityIndicator color="#4f8cff" size="large" />
+            ) : profile ? (
+              <>
+                <View style={styles.avatarContainer}>
+                  <View style={styles.avatarCircle}>
+                    {/* Person SVG Icon inside the circle */}
+                    <Svg width={54} height={54} viewBox="0 0 54 54">
+                      <Circle cx="27" cy="27" r="27" fill="#4f8cff" />
+                      {/* Head */}
+                      <Circle cx="27" cy="20" r="8" fill="#fff" />
+                      {/* Body */}
+                      <Path
+                        d="M14 44c0-7.18 5.82-13 13-13s13 5.82 13 13"
+                        stroke="#fff"
+                        strokeWidth="3"
+                        fill="none"
+                        strokeLinecap="round"
+                      />
+                    </Svg>
+                  </View>
+                </View>
+                
+                {editing ? (
+                  <View style={styles.editSection}>
+                    <Text style={styles.sectionTitle}>Edit Profile</Text>
+                    
+                    <Text style={styles.profileLabel}>Name</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={name}
+                      onChangeText={setName}
+                      editable={!saving}
+                      placeholder="Enter your name"
+                      placeholderTextColor="#bfc9d1"
                     />
-                  </Svg>
-                </View>
+                    
+                    <Text style={styles.profileLabel}>Email</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={email}
+                      onChangeText={setEmail}
+                      editable={!saving}
+                      placeholder="Enter your email"
+                      placeholderTextColor="#bfc9d1"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                    />
+                    
+                    <Text style={styles.profileLabel}>Phone</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={phone}
+                      onChangeText={setPhone}
+                      editable={!saving}
+                      placeholder="Enter your phone"
+                      placeholderTextColor="#bfc9d1"
+                      keyboardType="phone-pad"
+                      returnKeyType="done"
+                      blurOnSubmit={true}
+                      onSubmitEditing={Keyboard.dismiss}
+                      selectionColor="#4f8cff"
+                    />
+                    
+                    <View style={styles.editButtonRow}>
+                      <TouchableOpacity
+                        style={styles.saveButton}
+                        onPress={handleSave}
+                        disabled={saving}
+                      >
+                        {saving ? (
+                          <ActivityIndicator size="small" color="#fff" />
+                        ) : (
+                          <Text style={styles.saveButtonText}>Save</Text>
+                        )}
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity
+                        style={styles.cancelButton}
+                        onPress={() => setEditing(false)}
+                        disabled={saving}
+                      >
+                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
+                  <>
+                    <Text style={styles.profileName}>{profile.name || "No Name"}</Text>
+                    <Text style={styles.profileEmail}>{profile.email || "N/A"}</Text>
+                    <Text style={styles.profilePhone}>{profile.phone || "No phone"}</Text>
+                    
+                    <View style={styles.profileInfoBox}>
+                      <Text style={styles.profileLabel}>User ID</Text>
+                      <Text style={styles.profileValue}>{profile.id}</Text>
+                    </View>
+                    
+                    <View style={styles.actionsContainer}>
+                      <TouchableOpacity
+                        style={styles.editProfileButton}
+                        onPress={() => setEditing(true)}
+                      >
+                        <Feather name="edit-2" size={18} color="#fff" />
+                        <Text style={styles.editProfileButtonText}>Edit Profile</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity
+                        style={styles.logoutButton}
+                        onPress={handleLogout}
+                        disabled={loggingOut}
+                      >
+                        <Feather name="log-out" size={18} color="#fff" />
+                        <Text style={styles.logoutButtonText}>
+                          {loggingOut ? "Logging out..." : "Logout"}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )}
+              </>
+            ) : (
+              <View style={styles.errorContainer}>
+                <Feather name="alert-circle" size={36} color="#f44336" />
+                <Text style={styles.errorText}>Profile not found.</Text>
+                <Text style={styles.errorSubtext}>Please try logging in again.</Text>
               </View>
-              {editing ? (
-                <View style={styles.editSection}>
-                  <Text style={styles.profileLabel}>Name</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={name}
-                    onChangeText={setName}
-                    editable={!saving}
-                    placeholder="Enter your name"
-                    placeholderTextColor="#bfc9d1"
-                  />
-                  <Text style={styles.profileLabel}>Email</Text>
-                  <TextInput
-                    style={styles.input}
-                    value={email}
-                    onChangeText={setEmail}
-                    editable={!saving}
-                    placeholder="Enter your email"
-                    placeholderTextColor="#bfc9d1"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
-                  <Text style={styles.profileLabel}>Phone</Text>
-                  <TextInput
-                    style={[styles.input, { color: "#fff", fontWeight: "bold", letterSpacing: 1.5 }]}
-                    value={phone}
-                    onChangeText={setPhone}
-                    editable={!saving}
-                    placeholder="Enter your phone"
-                    placeholderTextColor="#bfc9d1"
-                    keyboardType="phone-pad"
-                    returnKeyType="done"
-                    blurOnSubmit={true}
-                    onSubmitEditing={Keyboard.dismiss}
-                    selectionColor="#4f8cff"
-                  />
-                  <View style={styles.editButtonRow}>
-                    <TouchableOpacity
-                      style={styles.saveButton}
-                      onPress={handleSave}
-                      disabled={saving}
-                    >
-                      <Text style={styles.saveButtonText}>
-                        {saving ? "Saving..." : "Save"}
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.cancelButton}
-                      onPress={() => setEditing(false)}
-                      disabled={saving}
-                    >
-                      <Text style={styles.cancelButtonText}>Cancel</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ) : (
-                <>
-                  <Text style={styles.profileName}>{profile.name || "No Name"}</Text>
-                  <Text style={styles.profileEmail}>{profile.email || "N/A"}</Text>
-                  <Text style={styles.profilePhone}>{profile.phone || "No phone"}</Text>
-                  <View style={styles.profileInfoBox}>
-                    <Text style={styles.profileLabel}>User ID</Text>
-                    <Text style={styles.profileValue}>{profile.id}</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.editProfileButton}
-                    onPress={() => setEditing(true)}
-                  >
-                    <Feather name="edit-2" size={18} color="#fff" />
-                    <Text style={styles.editProfileButtonText}>Edit Profile</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.logoutButton}
-                    onPress={handleLogout}
-                    disabled={loggingOut}
-                  >
-                    <Feather name="log-out" size={18} color="#fff" />
-                    <Text style={styles.logoutButtonText}>{loggingOut ? "Logging out..." : "Logout"}</Text>
-                  </TouchableOpacity>
-                </>
-              )}
-            </>
-          ) : (
-            <Text style={styles.profileValue}>Profile not found.</Text>
-          )}
-        </View>
+            )}
+          </View>
+          
+          <View style={styles.infoCard}>
+            <Text style={styles.sectionTitle}>App Information</Text>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>App Version</Text>
+              <Text style={styles.infoValue}>1.0.0</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Build</Text>
+              <Text style={styles.infoValue}>2023.10.15</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Device ID</Text>
+              <Text style={styles.infoValue}>DV-{Math.floor(Math.random() * 10000).toString().padStart(4, '0')}</Text>
+            </View>
+          </View>
+        </ScrollView>
+        
         <View style={styles.navbar}>
           <TouchableOpacity
             style={styles.navItem}
@@ -246,12 +291,11 @@ const ProfilePage = () => {
             <Text style={styles.navText}>GPS</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => navigation.navigate("Profile", {userId })}
+            style={[styles.navItem, styles.activeNavItem]}
             activeOpacity={0.7}
           >
-            <Feather name="user" style={styles.navIcon} />
-            <Text style={styles.navText}>Profile</Text>
+            <Feather name="user" style={[styles.navIcon, styles.activeNavIcon]} />
+            <Text style={[styles.navText, styles.activeNavText]}>Profile</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -269,8 +313,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#181c2f",
     flex: 1,
     alignItems: "center",
-    justifyContent: "center",
-    paddingTop: 32,
   },
   topLeftCircle: {
     position: "absolute",
@@ -292,163 +334,243 @@ const styles = StyleSheet.create({
     opacity: 0.5,
     zIndex: 0,
   },
-  card: {
-    position: "relative",
+  title: {
+    color: "#fff",
+    marginTop: 50,
+    marginBottom: 20,
+    fontWeight: "700",
+    fontSize: 24,
     zIndex: 1,
-    backgroundColor: "rgba(34, 40, 57, 0.98)",
-    borderRadius: 32,
-    paddingVertical: 36,
+  },
+  scrollView: {
+    width: "100%",
+    zIndex: 1,
+  },
+  scrollContent: {
+    alignItems: "center",
+    paddingBottom: NAVBAR_HEIGHT + 20,
+  },
+  card: {
+    backgroundColor: "rgba(34, 40, 57, 0.95)",
+    borderRadius: 24,
+    paddingVertical: 30,
     paddingHorizontal: 24,
-    width: "88%",
-    maxWidth: 400,
+    width: "90%",
+    maxWidth: 380,
     alignItems: "center",
     shadowColor: "#1f2687",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.37,
     shadowRadius: 16,
     elevation: 8,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   avatarContainer: {
-    marginBottom: 16,
+    marginBottom: 20,
     alignItems: "center",
     justifyContent: "center",
   },
   avatarCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: "#4f8cff",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 4,
     shadowColor: "#232946",
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  avatarText: {
-    color: "#fff",
-    fontSize: 36,
-    fontWeight: "bold",
-    letterSpacing: 2,
-  },
-  title: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 24,
-    marginTop: 30,
-    marginBottom: 8,
-    textAlign: "center",
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 6,
   },
   profileName: {
     color: "#fff",
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "700",
-    marginBottom: 2,
+    marginBottom: 6,
     textAlign: "center",
   },
   profileEmail: {
     color: "#bfc9d1",
-    fontSize: 15,
-    marginBottom: 2,
+    fontSize: 16,
+    marginBottom: 4,
     textAlign: "center",
   },
   profilePhone: {
     color: "#bfc9d1",
-    fontSize: 15,
-    marginBottom: 10,
+    fontSize: 16,
+    marginBottom: 16,
     textAlign: "center",
   },
   profileInfoBox: {
-    backgroundColor: "#232946",
+    backgroundColor: "rgba(43, 51, 73, 0.5)",
     borderRadius: 16,
-    paddingVertical: 10,
-    paddingHorizontal: 18,
-    marginBottom: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    marginBottom: 20,
     alignItems: "center",
     width: "100%",
   },
-  profileLabel: {
-    color: "#bfc9d1",
-    fontSize: 13,
+  actionsContainer: {
+    width: "100%",
+    alignItems: "center",
+  },
+  sectionTitle: {
+    color: "#4f8cff",
+    fontSize: 18,
     fontWeight: "bold",
-    marginBottom: 2,
+    marginBottom: 16,
     textAlign: "center",
   },
-  profileValue: {
-    color: "#4f8cff",
+  profileLabel: {
+    color: "#bfc9d1",
     fontSize: 14,
-    marginBottom: 2,
-    textAlign: "center",
+    fontWeight: "bold",
+    marginBottom: 4,
+    alignSelf: "flex-start",
+  },
+  profileValue: {
+    color: "#fff",
+    fontSize: 15,
     fontWeight: "600",
   },
   editProfileButton: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     backgroundColor: "#4f8cff",
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 22,
-    marginTop: 10,
-    shadowColor: "#4f8cff",
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 2,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    width: "100%",
+    marginBottom: 14,
   },
   editProfileButtonText: {
     color: "#fff",
     fontWeight: "bold",
     marginLeft: 8,
-    fontSize: 15,
+    fontSize: 16,
   },
+  logoutButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f44336",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    width: "100%",
+  },
+  logoutButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    marginLeft: 8,
+    fontSize: 16,
+  },
+  
+  // Edit section styles
   editSection: {
     width: "100%",
     alignItems: "center",
-    marginTop: 8,
   },
   input: {
-    color: "#4f8cff",
-    backgroundColor: "#232946",
-    borderRadius: 8,
-    padding: 10,
+    color: "#fff",
+    backgroundColor: "rgba(43, 51, 73, 0.7)",
+    borderRadius: 12,
+    padding: 14,
     width: "100%",
     fontSize: 16,
-    marginBottom: 10,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#4f8cff",
+    borderColor: "rgba(79, 140, 255, 0.5)",
   },
   editButtonRow: {
     flexDirection: "row",
-    justifyContent: "center",
+    justifyContent: "space-between",
     width: "100%",
-    gap: 12,
+    marginTop: 10,
   },
   saveButton: {
     backgroundColor: "#4f8cff",
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 24,
-    marginRight: 8,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    width: "48%",
   },
   saveButtonText: {
     color: "#fff",
     fontWeight: "bold",
-    fontSize: 15,
+    fontSize: 16,
   },
   cancelButton: {
-    backgroundColor: "#232946",
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 24,
+    backgroundColor: "rgba(43, 51, 73, 0.7)",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    width: "48%",
     borderWidth: 1,
     borderColor: "#bfc9d1",
   },
   cancelButtonText: {
     color: "#bfc9d1",
     fontWeight: "bold",
-    fontSize: 15,
+    fontSize: 16,
   },
+  
+  // Error container styles
+  errorContainer: {
+    alignItems: "center",
+    padding: 20,
+  },
+  errorText: {
+    color: "#f44336",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  errorSubtext: {
+    color: "#bfc9d1",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  
+  // Info card styles
+  infoCard: {
+    backgroundColor: "rgba(34, 40, 57, 0.95)",
+    borderRadius: 24,
+    paddingVertical: 24,
+    paddingHorizontal: 24,
+    width: "90%",
+    maxWidth: 380,
+    shadowColor: "#1f2687",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.37,
+    shadowRadius: 16,
+    elevation: 8,
+    marginBottom: 20,
+  },
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(43, 51, 73, 0.7)",
+  },
+  infoLabel: {
+    color: "#bfc9d1",
+    fontSize: 14,
+  },
+  infoValue: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  
+  // Navbar styles
   navbar: {
     position: "absolute",
     left: 0,
@@ -478,34 +600,24 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 16,
   },
+  activeNavItem: {
+    backgroundColor: "rgba(79, 140, 255, 0.15)",
+  },
   navIcon: {
     fontSize: Math.round(width * 0.07),
     color: "#4f8cff",
     marginBottom: 2,
+  },
+  activeNavIcon: {
+    color: "#ffffff",
   },
   navText: {
     color: "#bfc9d1",
     fontSize: Math.round(width * 0.032),
     fontWeight: "600",
   },
-  logoutButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f44336",
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 22,
-    marginTop: 16,
-    shadowColor: "#f44336",
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  logoutButtonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    marginLeft: 8,
-    fontSize: 15,
+  activeNavText: {
+    color: "#ffffff",
   },
 });
 
