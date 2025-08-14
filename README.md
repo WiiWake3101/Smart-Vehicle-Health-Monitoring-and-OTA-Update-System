@@ -1,8 +1,25 @@
-# Welcome to your Expo app 👋
+# Smart Vehicle Health Monitoring and OTA Update System 🚗
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A comprehensive IoT solution for real-time vehicle monitoring with over-the-air updates using ESP32, React Native, and Supabase.
 
-## Get started
+## 🔍 Project Overview
+
+This system provides real-time monitoring of vehicle health metrics including:
+- GPS location tracking with trip history
+- Temperature and humidity sensing
+- IMU (Inertial Measurement Unit) data for motion analysis
+- OTA (Over-The-Air) firmware updates for ESP32 devices
+
+## 🛠️ Technology Stack
+
+- **Frontend**: React Native with Expo
+- **Backend**: Supabase (PostgreSQL + Real-time API)
+- **IoT Hardware**: ESP32 with GPS, DHT22, and MPU6050 sensors
+- **DevOps**: Jenkins, Docker, Terraform, GitHub Actions
+
+## ⚙️ Setup Instructions
+
+### Mobile Application
 
 1. Install dependencies
 
@@ -16,35 +33,70 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+### ESP32 Hardware Setup
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+1. Connect the sensors:
+   - GPS module to pins 16 (RX) and 17 (TX)
+   - DHT22 sensor to pin 5
+   - MPU6050 to I2C pins (SDA/SCL)
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+2. Flash the ESP32 firmware:
 
-## Get a fresh project
+   ```bash
+   cd esp32/sensor_data_uploader
+   arduino-cli compile --fqbn esp32:esp32:esp32 .
+   arduino-cli upload -p [PORT] --fqbn esp32:esp32:esp32 .
+   ```
 
-When you're ready, run:
+## 🚀 CI/CD Pipeline with Jenkins
 
-```bash
-npm run reset-project
+This project uses Jenkins for continuous integration and deployment:
+
+1. **Automated Testing**: Unit and integration tests run on each commit
+2. **Mobile App Builds**: Automated Expo builds for iOS and Android
+3. **ESP32 Firmware Verification**: Compilation and static analysis
+4. **OTA Updates**: Automated deployment of firmware updates
+
+### Jenkins Pipeline Structure
+
+```groovy
+pipeline {
+    agent any
+    stages {
+        stage('Build') {
+            parallel {
+                stage('Mobile App') {
+                    steps {
+                        sh 'npm install'
+                        sh 'npm test'
+                    }
+                }
+                stage('ESP32 Firmware') {
+                    steps {
+                        sh 'arduino-cli compile --fqbn esp32:esp32:esp32 ./esp32/sensor_data_uploader'
+                    }
+                }
+            }
+        }
+        stage('Deploy') {
+            when { branch 'main' }
+            steps {
+                sh 'npx expo build:android'
+                sh 'npx expo build:ios'
+                sh './scripts/deploy_ota_update.sh'
+            }
+        }
+    }
+}
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## 🔄 DevOps Practices Implemented
 
-## Learn more
+- **Infrastructure as Code**: Terraform for Supabase resources
+- **Containerization**: Docker for consistent development and testing
+- **Monitoring**: Grafana dashboards for system performance
+- **Automated Testing**: Jest for frontend, Arduino unit tests for ESP32
+- **Security Scanning**: Dependency vulnerability scanning
+- **Version Control**: Git with GitHub flow branching strategy
 
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 📊 System Architecture
