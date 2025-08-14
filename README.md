@@ -89,7 +89,6 @@ pipeline {
     }
 }
 ```
-
 ## 🔄 DevOps Practices Implemented
 
 - **Infrastructure as Code**: Terraform for Supabase resources
@@ -99,10 +98,6 @@ pipeline {
 - **Security Scanning**: Dependency vulnerability scanning
 - **Version Control**: Git with GitHub flow branching strategy
 
-## 📊 System Architecture
-
-![System Architecture](./docs/system_architecture.png)
-
 ## Environment Configuration (.env)
 
 This application requires a properly configured `.env` file in the root directory. Below is the structure of the `.env` file with the required variables:
@@ -111,17 +106,6 @@ This application requires a properly configured `.env` file in the root director
 # Supabase Configuration
 SUPABASE_URL=your_supabase_url
 SUPABASE_ANON_KEY=your_supabase_anon_key
-
-# OTA Update Configuration
-OTA_SERVER_URL=your_update_server_url
-OTA_UPDATE_CHECK_INTERVAL=3600000  # in milliseconds (1 hour default)
-
-# Device Configuration
-DEVICE_ID_PREFIX=DV  # Prefix for device IDs
-DEFAULT_FIRMWARE_VERSION=1.0.0
-
-# Development Settings
-DEBUG_MODE=true  # Set to false in production
 ```
 
 ### Important Notes:
