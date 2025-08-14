@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, ActivityIndicator, TextInput, Keyboard, TouchableWithoutFeedback, ScrollView } from "react-native";
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, ActivityIndicator, TextInput, Keyboard, TouchableWithoutFeedback, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { MaterialCommunityIcons, FontAwesome5, Ionicons, Feather } from "@expo/vector-icons";
@@ -88,27 +88,33 @@ const ProfilePage = () => {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <View style={styles.container}>
-        <LinearGradient
-          colors={["#4f8cff", "#3358d1"]}
-          style={styles.topLeftCircle}
-          start={[0, 0]}
-          end={[1, 1]}
-        />
-        <LinearGradient
-          colors={["#232946", "#4f8cff"]}
-          style={styles.bottomRightCircle}
-          start={[0, 1]}
-          end={[1, 0]}
-        />
-        
-        <Text style={styles.title}>Profile</Text>
-        
+    <View style={styles.container}>
+      <LinearGradient
+        colors={["#4f8cff", "#3358d1"]}
+        style={styles.topLeftCircle}
+        start={[0, 0]}
+        end={[1, 1]}
+      />
+      <LinearGradient
+        colors={["#232946", "#4f8cff"]}
+        style={styles.bottomRightCircle}
+        start={[0, 1]}
+        end={[1, 0]}
+      />
+      
+      <Text style={styles.title}>Profile</Text>
+      
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.keyboardAvoidingView}
+      >
         <ScrollView 
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={true}
+          keyboardShouldPersistTaps="handled"
+          bounces={true}
+          overScrollMode="always"
         >
           <View style={styles.card}>
             {loading ? (
@@ -256,50 +262,50 @@ const ProfilePage = () => {
             </View>
           </View>
         </ScrollView>
-        
-        <View style={styles.navbar}>
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => navigation.navigate("Home", {userId })}
-            activeOpacity={0.7}
-          >
-            <MaterialCommunityIcons name="home-variant" style={styles.navIcon} />
-            <Text style={styles.navText}>Home</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => navigation.navigate("IMU", {userId })}
-            activeOpacity={0.7}
-          >
-            <FontAwesome5 name="chart-line" style={styles.navIcon} />
-            <Text style={styles.navText}>IMU</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => navigation.navigate("DTH", {userId })}
-            activeOpacity={0.7}
-          >
-            <MaterialCommunityIcons name="thermometer" style={styles.navIcon} />
-            <Text style={styles.navText}>DTH</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.navItem}
-            onPress={() => navigation.navigate("GPS", {userId })}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="location-sharp" style={styles.navIcon} />
-            <Text style={styles.navText}>GPS</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.navItem, styles.activeNavItem]}
-            activeOpacity={0.7}
-          >
-            <Feather name="user" style={[styles.navIcon, styles.activeNavIcon]} />
-            <Text style={[styles.navText, styles.activeNavText]}>Profile</Text>
-          </TouchableOpacity>
-        </View>
+      </KeyboardAvoidingView>
+      
+      <View style={styles.navbar}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("Home", {userId })}
+          activeOpacity={0.7}
+        >
+          <MaterialCommunityIcons name="home-variant" style={styles.navIcon} />
+          <Text style={styles.navText}>Home</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("IMU", {userId })}
+          activeOpacity={0.7}
+        >
+          <FontAwesome5 name="chart-line" style={styles.navIcon} />
+          <Text style={styles.navText}>IMU</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("DTH", {userId })}
+          activeOpacity={0.7}
+        >
+          <MaterialCommunityIcons name="thermometer" style={styles.navIcon} />
+          <Text style={styles.navText}>DTH</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("GPS", {userId })}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="location-sharp" style={styles.navIcon} />
+          <Text style={styles.navText}>GPS</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.navItem, styles.activeNavItem]}
+          activeOpacity={0.7}
+        >
+          <Feather name="user" style={[styles.navIcon, styles.activeNavIcon]} />
+          <Text style={[styles.navText, styles.activeNavText]}>Profile</Text>
+        </TouchableOpacity>
       </View>
-    </TouchableWithoutFeedback>
+    </View>
   );
 };
 
@@ -342,20 +348,26 @@ const styles = StyleSheet.create({
     fontSize: 24,
     zIndex: 1,
   },
+  keyboardAvoidingView: {
+    flex: 1,
+    width: "100%",
+  },
   scrollView: {
     width: "100%",
     zIndex: 1,
+    flex: 1,
   },
   scrollContent: {
     alignItems: "center",
     paddingBottom: NAVBAR_HEIGHT + 20,
+    paddingHorizontal: 16,
   },
   card: {
     backgroundColor: "rgba(34, 40, 57, 0.95)",
     borderRadius: 24,
     paddingVertical: 30,
     paddingHorizontal: 24,
-    width: "90%",
+    width: "100%",
     maxWidth: 380,
     alignItems: "center",
     shadowColor: "#1f2687",
@@ -471,6 +483,7 @@ const styles = StyleSheet.create({
   editSection: {
     width: "100%",
     alignItems: "center",
+    paddingBottom: 10,
   },
   input: {
     color: "#fff",
