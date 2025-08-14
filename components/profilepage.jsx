@@ -245,22 +245,6 @@ const ProfilePage = () => {
               </View>
             )}
           </View>
-          
-          <View style={styles.infoCard}>
-            <Text style={styles.sectionTitle}>App Information</Text>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>App Version</Text>
-              <Text style={styles.infoValue}>1.0.0</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Build</Text>
-              <Text style={styles.infoValue}>2023.10.15</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Device ID</Text>
-              <Text style={styles.infoValue}>DV-{Math.floor(Math.random() * 10000).toString().padStart(4, '0')}</Text>
-            </View>
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
       
@@ -546,6 +530,22 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   errorSubtext: {
+    color: "#bfc9d1",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  
+  // Navbar styles
+  navbar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: NAVBAR_HEIGHT,
+    backgroundColor: "rgba(35, 41, 70, 0.98)",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     color: "#bfc9d1",
     fontSize: 14,
     textAlign: "center",
