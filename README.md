@@ -149,7 +149,7 @@ python scripts/upload_firmware.py delete --all
 
 **Note:**  
 - Ensure your `.env` file contains `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
-- The script will look for binaries in `C:\Users\vivek\OneDrive\Documents\Arduino\Devops\` by default.
+- The script will look for binaries in `python upload_firmware.py upload "C:\Users\vivek\OneDrive\Documents\Arduino\Devops\build\esp32.esp32.esp32wrover\Devops.ino.bin" 1.0.0 GPS-Tracker false` by default.
 
 ## Getting Started
 
