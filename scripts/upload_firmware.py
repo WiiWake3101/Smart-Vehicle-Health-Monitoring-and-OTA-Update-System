@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 
 # Default path for binary files
-DEFAULT_BIN_PATH = r"C:\Users\vivek\OneDrive\Documents\Arduino\Devops"
+DEFAULT_BIN_PATH = r"C:\Users\vivek\OneDrive\Documents\Arduino\Devops\build\esp32.esp32.esp32wrover\Devops.ino.bin"
 # Path to .env file
 ENV_FILE_PATH = r"C:\Users\vivek\OneDrive\Desktop\CS\Devops\.env"
 
@@ -28,8 +28,8 @@ SUPABASE_API_KEY = os.environ.get("EXPO_PUBLIC_SUPABASE_ANON_KEY")
 # If not found in environment variables, try loading from .env file
 if not SUPABASE_URL or not SUPABASE_API_KEY:
     env_vars = load_env_file(ENV_FILE_PATH)
-    SUPABASE_URL = SUPABASE_URL or env_vars.get("SUPABASE_URL")
-    SUPABASE_API_KEY = SUPABASE_API_KEY or env_vars.get("SUPABASE_ANON_KEY")
+    SUPABASE_URL = SUPABASE_URL or env_vars.get("EXPO_PUBLIC_SUPABASE_URL")
+    SUPABASE_API_KEY = SUPABASE_API_KEY or env_vars.get("EXPO_PUBLIC_SUPABASE_ANON_KEY")
 
 # Check if credentials are set
 if not SUPABASE_URL or not SUPABASE_API_KEY:
