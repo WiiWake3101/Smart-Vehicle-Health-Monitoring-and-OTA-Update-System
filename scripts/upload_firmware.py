@@ -285,21 +285,35 @@ def delete_firmware(version=None, device_type=None, all_versions=False):
     # Also delete storage files
     for record in records:
         if "binary_url" in record:
-            # Extract filename from URL
-            url_parts = record["binary_url"].split("/")
-            if len(url_parts) > 0:
-                filename = url_parts[-1]
-                storage_url = f"{SUPABASE_URL}/storage/v1/object/firmware/{filename}"
-                
-                delete_storage_response = requests.delete(
-                    storage_url,
-                    headers=headers
-                )
-                
-                if delete_storage_response.status_code != 200 and delete_storage_response.status_code != 204:
-                    print(f"Warning: Could not delete storage file: {filename}")
-                else:
-                    print(f"Deleted storage file: {filename}")
+            try:
+                # Extract filename from URL
+                url_parts = record["binary_url"].split("/")
+                if len(url_parts) > 0:
+                    filename = url_parts[-1]
+                    
+                    # Use the correct URL format for admin operations
+                    storage_url = f"{SUPABASE_URL}/storage/v1/object/firmware/{filename}"
+                    
+                    # Create storage-specific headers without Content-Type for DELETE request
+                    storage_headers = {
+                        "Authorization": f"Bearer {SUPABASE_API_KEY}",
+                        "apikey": SUPABASE_API_KEY
+                    }
+                    
+                    print(f"Attempting to delete from: {storage_url}")
+                    delete_storage_response = requests.delete(
+                        storage_url,
+                        headers=storage_headers
+                    )
+                    
+                    if delete_storage_response.status_code == 200 or delete_storage_response.status_code == 204:
+                        print(f"Deleted storage file: {filename}")
+                    else:
+                        print(f"Warning: Could not delete storage file: {filename}")
+                        print(f"Status code: {delete_storage_response.status_code}")
+                        print(f"Response: {delete_storage_response.text}")
+            except Exception as e:
+                print(f"Error while trying to delete storage file: {str(e)}")
     
     return True
 
