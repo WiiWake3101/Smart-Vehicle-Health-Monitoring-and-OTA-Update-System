@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator ,Button, Alert } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { supabase } from "../lib/supabase";
 import { useNavigation } from "@react-navigation/native";
@@ -31,7 +31,6 @@ const Loginpage = () => {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
-        console.error("Session error:", sessionError);
         setInitialCheckDone(true);
         setLoading(false);
         return;
@@ -49,7 +48,6 @@ const Loginpage = () => {
         setLoading(false);
       }
     } catch (error) {
-      console.error("Error checking session:", error);
       setInitialCheckDone(true);
       setLoading(false);
     }
@@ -58,7 +56,7 @@ const Loginpage = () => {
   // Supabase email/password sign-in
   const handleLogin = async () => {
     if (!email || !password) {
-      setError('Please enter both email and password');
+      Alert.alert('Missing Fields', 'Please enter both email and password');
       return;
     }
     
@@ -73,9 +71,8 @@ const Loginpage = () => {
       });
       
       if (error) {
-        console.error("Login error:", error);
-        setError(error.message || "Incorrect email or password. Please try again.");
-        setLoading(false);
+        Alert.alert('Login Error', error.message || "Incorrect email or password. Please try again.");
+        setLoading(false); 
         return;
       }
       
@@ -95,14 +92,12 @@ const Loginpage = () => {
             routes: [{ name: 'Home', params: { userId } }],
           });
         } catch (storageError) {
-          console.error("Storage error:", storageError);
           setError("Could not save session. Please try again.");
         }
       } else {
         setError("Login successful but no session created. Please try again.");
       }
     } catch (e) {
-      console.error("Unexpected error:", e);
       setError("An unexpected error occurred. Please try again.");
     } finally {
       setLoading(false);

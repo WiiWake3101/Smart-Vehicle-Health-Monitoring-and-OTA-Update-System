@@ -104,8 +104,8 @@ This application requires a properly configured `.env` file in the root director
 
 ```
 # Supabase Configuration
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
+EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
 ### Important Notes:
@@ -113,6 +113,43 @@ SUPABASE_ANON_KEY=your_supabase_anon_key
 - Make sure to add `.env` to your `.gitignore` file
 - For local development, create a `.env.local` file that won't be tracked by git
 - Request actual values from the project administrator
+
+## 🔄 OTA Firmware Upload Script
+
+A Python script (`scripts/upload_firmware.py`) is provided to manage firmware binaries and OTA updates via Supabase.
+
+### Features
+
+- **Automatic Detection**: Finds `.bin` files in the default directory and uploads them.
+- **Manual Upload**: Upload a specific binary with version and device type.
+- **Version Management**: List, delete, and check firmware versions.
+- **Supabase Integration**: Uploads binaries to Supabase Storage and registers metadata in the database.
+
+### Usage
+
+```bash
+# Automatic upload of all binaries in the default directory
+python scripts/upload_firmware.py
+
+# Manual upload
+python scripts/upload_firmware.py upload <binary_path> <version> <device_type> [is_mandatory] [--force]
+
+# List firmware versions
+python scripts/upload_firmware.py list [device_type]
+
+# List available binary files
+python scripts/upload_firmware.py binaries
+
+# Delete a firmware version
+python scripts/upload_firmware.py delete <version> <device_type>
+
+# Delete all firmware versions
+python scripts/upload_firmware.py delete --all
+```
+
+**Note:**  
+- Ensure your `.env` file contains `SUPABASE_URL` and `SUPABASE_ANON_KEY`.
+- The script will look for binaries in `C:\Users\vivek\OneDrive\Documents\Arduino\Devops` by default.
 
 ## Getting Started
 

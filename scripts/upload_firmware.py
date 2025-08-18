@@ -22,8 +22,8 @@ def load_env_file(env_path):
     return env_vars
 
 # First try to get credentials from environment variables, then from .env file
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_API_KEY = os.environ.get("SUPABASE_ANON_KEY")
+SUPABASE_URL = os.environ.get("EXPO_PUBLIC_SUPABASE_URL")
+SUPABASE_API_KEY = os.environ.get("EXPO_PUBLIC_SUPABASE_ANON_KEY")
 
 # If not found in environment variables, try loading from .env file
 if not SUPABASE_URL or not SUPABASE_API_KEY:
