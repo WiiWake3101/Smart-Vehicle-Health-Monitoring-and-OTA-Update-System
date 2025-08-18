@@ -35,21 +35,13 @@ This system provides real-time monitoring of vehicle health metrics including:
 
 ### ESP32 Hardware Setup
 
-1. Connect the sensors:
+1. **Connect the sensors:**
    - GPS module to pins 16 (RX) and 17 (TX)
    - DHT22 sensor to pin 5
    - MPU6050 to I2C pins (SDA/SCL)
 
-2. Flash the ESP32 firmware:
-
-   ```bash
-   cd esp32/sensor_data_uploader
-   arduino-cli compile --fqbn esp32:esp32:esp32 .
-   arduino-cli upload -p [PORT] --fqbn esp32:esp32:esp32 .
-   ```
-3. **Create and configure `secrets.h` in the Arduino IDE:**
-
-   - In your Arduino project folder, create a file named `secrets.h`.
+2. **Create and configure `secrets.h` in the Arduino IDE:**
+   - In the same folder as your `Devops_1.0.0.ino` file, create a file named `secrets.h`.
    - Add your WiFi SSID, password, Supabase URL, API key, and user ID as shown below:
      ```cpp
      #define WIFI_SSID "your_wifi_ssid"
@@ -58,7 +50,12 @@ This system provides real-time monitoring of vehicle health metrics including:
      #define SUPABASE_API_KEY "your_supabase_anon_key"
      #define USER_ID "your_user_id"
      ```
-   - Make sure to save `secrets.h` before compiling and uploading the firmware.
+   - Save `secrets.h` before compiling and uploading the firmware.
+
+3. **Upload the firmware to ESP32:**
+   - Open `Devops_1.0.0.ino` in Arduino IDE.
+   - Select the correct board and port.
+   - Compile and upload the sketch to your ESP32.
 
 ## 🚀 CI/CD Pipeline with Jenkins
 
@@ -166,6 +163,9 @@ python scripts/upload_firmware.py delete --all
 ## Getting Started
 
 1. Clone the repository
+2. Create the `.env` file as described above
+3. Install dependencies with `npm install`
+4. Start the development server with `npx expo start`
 2. Create the `.env` file as described above
 3. Install dependencies with `npm install`
 4. Start the development server with `npx expo start`
