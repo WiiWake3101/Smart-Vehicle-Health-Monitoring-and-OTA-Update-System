@@ -47,6 +47,18 @@ This system provides real-time monitoring of vehicle health metrics including:
    arduino-cli compile --fqbn esp32:esp32:esp32 .
    arduino-cli upload -p [PORT] --fqbn esp32:esp32:esp32 .
    ```
+3. **Create and configure `secrets.h` in the Arduino IDE:**
+
+   - In your Arduino project folder, create a file named `secrets.h`.
+   - Add your WiFi SSID, password, Supabase URL, API key, and user ID as shown below:
+     ```cpp
+     #define WIFI_SSID "your_wifi_ssid"
+     #define WIFI_PASSWORD "your_wifi_password"
+     #define SUPABASE_URL "your_supabase_url"
+     #define SUPABASE_API_KEY "your_supabase_anon_key"
+     #define USER_ID "your_user_id"
+     ```
+   - Make sure to save `secrets.h` before compiling and uploading the firmware.
 
 ## 🚀 CI/CD Pipeline with Jenkins
 

@@ -43,3 +43,5 @@ app-example
 .env.local
 .env.development
 .env.production
+
+secrets.h
