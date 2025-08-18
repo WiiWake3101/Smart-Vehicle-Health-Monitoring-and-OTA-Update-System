@@ -317,10 +317,10 @@ void sendToSupabase(float lat, float lng, float spd, float alt, int sat,
       doc["speed"] = spd;
       doc["altitude"] = alt;
       doc["satellites"] = sat;
-      doc["timestamp"] = ts;
-      doc["acceleration_x"] = ax;
-      doc["acceleration_y"] = ay;
-      doc["acceleration_z"] = az;
+      doc["time"] = ts; // <-- changed from "timestamp" to "time"
+      doc["accel_x"] = ax; // <-- changed from "acceleration_x" to "accel_x"
+      doc["accel_y"] = ay; // <-- changed from "acceleration_y" to "accel_y"
+      doc["accel_z"] = az; // <-- changed from "acceleration_z" to "accel_z"
       doc["gyro_x"] = gx;
       doc["gyro_y"] = gy;
       doc["gyro_z"] = gz;
