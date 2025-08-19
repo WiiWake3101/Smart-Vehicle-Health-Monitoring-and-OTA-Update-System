@@ -251,6 +251,7 @@ const HomePage = () => {
             filter: `user_id=eq.${userId}`
           }, 
           (payload) => {
+            console.log("Realtime update received:", payload);
             const newReading = payload.new;
             const now = new Date();
             
