@@ -47,6 +47,11 @@ pipeline {
                 bat 'arduino-cli lib install "ArduinoJson"'
             }
         }
+        stage('Install ESP32 Core') {
+            steps {
+                bat 'arduino-cli core install esp32:esp32'
+            }
+        }
         stage('Compile ESP32 Firmware') {
             steps {
                 bat 'arduino-cli compile --fqbn esp32:esp32:esp32wrover esp32\\Devops_1_0_0'
