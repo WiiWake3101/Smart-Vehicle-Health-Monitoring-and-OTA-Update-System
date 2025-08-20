@@ -1,6 +1,5 @@
 pipeline {
-    agent none
-    
+    agent any
     environment {
         EXPO_PUBLIC_SUPABASE_URL = credentials('EXPO_PUBLIC_SUPABASE_URL')
         EXPO_PUBLIC_SUPABASE_ANON_KEY = credentials('EXPO_PUBLIC_SUPABASE_ANON_KEY')
@@ -10,10 +9,8 @@ pipeline {
         SUPABASE_API_KEY = credentials('SUPABASE_API_KEY')
         USER_ID = credentials('USER_ID')
     }
-    
     stages {
         stage('Checkout') {
-            agent any
             steps {
                 checkout scm
             }
