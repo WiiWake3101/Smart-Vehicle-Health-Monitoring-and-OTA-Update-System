@@ -314,7 +314,6 @@ void sendToSupabase(float lat, float lng, float spd, float alt, int sat,
       https.addHeader("apikey", SUPABASE_API_KEY);
       https.addHeader("Authorization", String("Bearer ") + SUPABASE_API_KEY);
 
-      // Create JSON document for data
       DynamicJsonDocument doc(1024);
       doc["user_id"] = USER_ID;
       doc["latitude"] = lat;
@@ -322,10 +321,10 @@ void sendToSupabase(float lat, float lng, float spd, float alt, int sat,
       doc["speed"] = spd;
       doc["altitude"] = alt;
       doc["satellites"] = sat;
-      doc["timestamp"] = ts;
-      doc["acceleration_x"] = ax;
-      doc["acceleration_y"] = ay;
-      doc["acceleration_z"] = az;
+      doc["time"] = ts;
+      doc["accel_x"] = ax;
+      doc["accel_y"] = ay;
+      doc["accel_z"] = az;
       doc["gyro_x"] = gx;
       doc["gyro_y"] = gy;
       doc["gyro_z"] = gz;

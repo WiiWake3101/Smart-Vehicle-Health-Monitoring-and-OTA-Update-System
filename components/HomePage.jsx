@@ -7,6 +7,7 @@ import { supabase } from "../lib/supabase";
 
 const { width, height } = Dimensions.get("window");
 const MAX_SPEED = 120;
+const OFFLINE_THRESHOLD_MS = 120000; // 2 minutes without data = offline (since data is sent every 1 min)
 
 const HomePage = () => {
   const navigation = useNavigation();
@@ -32,10 +33,13 @@ const HomePage = () => {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [lastDataReceived, setLastDataReceived] = useState(null);
+  const [isOnline, setIsOnline] = useState(false);
 
   // Fetch initial data and set up subscription
   useEffect(() => {
     let subscription;
+    let statusCheckInterval;
     
     const fetchInitialData = async () => {
       try {
@@ -53,14 +57,31 @@ const HomePage = () => {
         
         if (data && data.length > 0) {
           const latestReading = data[0];
+          const lastReadingTime = new Date(latestReading.time);
+          const now = new Date();
           
-          setDeviceData({
-            speed: latestReading.speed || 0,
-            temperature: latestReading.temperature || 0,
-            humidity: latestReading.humidity || 0,
-            lastSyncTime: new Date(latestReading.time).toLocaleString(),
-            status: "Online"
-          });
+          // Check if the latest reading is within the threshold
+          const isCurrentlyOnline = (now - lastReadingTime) < OFFLINE_THRESHOLD_MS;
+          setIsOnline(isCurrentlyOnline);
+          setLastDataReceived(lastReadingTime);
+          
+          if (isCurrentlyOnline) {
+            setDeviceData({
+              speed: latestReading.speed || 0,
+              temperature: latestReading.temperature || 0,
+              humidity: latestReading.humidity || 0,
+              lastSyncTime: lastReadingTime.toLocaleString(),
+              status: "Online"
+            });
+          } else {
+            setDeviceData({
+              speed: 0,
+              temperature: 0,
+              humidity: 0,
+              lastSyncTime: lastReadingTime.toLocaleString(),
+              status: "Offline"
+            });
+          }
         }
         
         // Calculate trip statistics
@@ -230,14 +251,20 @@ const HomePage = () => {
             filter: `user_id=eq.${userId}`
           }, 
           (payload) => {
+            console.log("Realtime update received:", payload);
             const newReading = payload.new;
+            const now = new Date();
+            
+            // Update last data received timestamp
+            setLastDataReceived(now);
+            setIsOnline(true);
             
             // Update current readings with latest data
             setDeviceData(prev => ({
               speed: newReading.speed || prev.speed,
               temperature: newReading.temperature || prev.temperature,
               humidity: newReading.humidity || prev.humidity,
-              lastSyncTime: new Date(newReading.time).toLocaleString(),
+              lastSyncTime: now.toLocaleString(),
               status: "Online"
             }));
             
@@ -250,13 +277,36 @@ const HomePage = () => {
         .subscribe();
     };
 
+    // Set up interval to check online status
+    statusCheckInterval = setInterval(() => {
+      if (lastDataReceived) {
+        const now = new Date();
+        const timeSinceLastData = now - lastDataReceived;
+        
+        if (timeSinceLastData > OFFLINE_THRESHOLD_MS && isOnline) {
+          // If no data received for threshold period, set to offline and reset values
+          setIsOnline(false);
+          setDeviceData(prev => ({
+            speed: 0,
+            temperature: 0,
+            humidity: 0,
+            lastSyncTime: prev.lastSyncTime,
+            status: "Offline"
+          }));
+        }
+      }
+    }, 5000); // Check every 5 seconds
+
     fetchInitialData();
     setupRealtimeSubscription();
 
-    // Clean up subscription on unmount
+    // Clean up subscription and interval on unmount
     return () => {
       if (subscription) {
         supabase.removeChannel(subscription);
+      }
+      if (statusCheckInterval) {
+        clearInterval(statusCheckInterval);
       }
     };
   }, [userId]);

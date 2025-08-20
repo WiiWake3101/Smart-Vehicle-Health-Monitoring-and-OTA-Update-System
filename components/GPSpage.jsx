@@ -81,17 +81,71 @@ const GPSPage = () => {
     }
   ];
 
+  // Cache for geocoding results to reduce API calls
+  const geocodingCache = {};
+
   // Helper function to reverse geocode (convert coordinates to address)
   const getAddressFromCoordinates = async (latitude, longitude) => {
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
-      );
-      const data = await response.json();
-      return data.display_name || 'Unknown location';
+      // Round coordinates to 5 decimal places for cache key
+      const lat = parseFloat(latitude).toFixed(5);
+      const lng = parseFloat(longitude).toFixed(5);
+      const cacheKey = `${lat},${lng}`;
+      
+      // Check cache first
+      if (geocodingCache[cacheKey]) {
+        return geocodingCache[cacheKey];
+      }
+      
+      // Fallback address using coordinates
+      const fallbackAddress = `Location (${lat}, ${lng})`;
+      
+      // Add delay between requests
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
+          {
+            headers: {
+              'User-Agent': 'DevopsGPSTracker/1.0',
+              'Accept': 'application/json',
+              'Accept-Language': 'en'
+            },
+            timeout: 5000 // 5 second timeout
+          }
+        );
+        
+        if (!response.ok) {
+          console.log(`Geocoding error: Status ${response.status}`);
+          return fallbackAddress;
+        }
+        
+        const text = await response.text();
+        if (text.includes("<html") || text.includes("<!DOCTYPE")) {
+          console.log("Received HTML instead of JSON");
+          return fallbackAddress;
+        }
+        
+        try {
+          const data = JSON.parse(text);
+          const address = data.display_name || fallbackAddress;
+          
+          // Cache the result
+          geocodingCache[cacheKey] = address;
+          
+          return address;
+        } catch (parseError) {
+          console.error('JSON parse error:', parseError);
+          return fallbackAddress;
+        }
+      } catch (fetchError) {
+        console.error('Fetch error:', fetchError);
+        return fallbackAddress;
+      }
     } catch (error) {
       console.error('Error with geocoding:', error);
-      return 'Address unavailable';
+      return `Location (${parseFloat(latitude).toFixed(5)}, ${parseFloat(longitude).toFixed(5)})`;
     }
   };
 
@@ -474,7 +528,7 @@ const GPSPage = () => {
                     end_latitude: lastPoint.latitude,
                     end_longitude: lastPoint.longitude,
                     distance: totalDistance,
-                    duration: timeDiffMinutes,
+                    duration: Math.round(timeDiffMinutes), // Convert to integer
                     avg_speed: avgSpeed,
                     max_speed: maxSpeed,
                     start_address: startAddress,

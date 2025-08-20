@@ -29,6 +29,8 @@ unsigned long lastOTACheck = 0;
 bool otaInProgress = false;
 unsigned long lastLedToggle = 0;
 bool ledState = false;
+unsigned long lastDataSend = 0; // Track last send time
+const unsigned long DATA_SEND_INTERVAL = 60000; // 1 minute
 
 void setup() {
   Serial.begin(115200);
@@ -317,10 +319,10 @@ void sendToSupabase(float lat, float lng, float spd, float alt, int sat,
       doc["speed"] = spd;
       doc["altitude"] = alt;
       doc["satellites"] = sat;
-      doc["timestamp"] = ts;
-      doc["acceleration_x"] = ax;
-      doc["acceleration_y"] = ay;
-      doc["acceleration_z"] = az;
+      doc["time"] = ts;
+      doc["accel_x"] = ax;
+      doc["accel_y"] = ay;
+      doc["accel_z"] = az;
       doc["gyro_x"] = gx;
       doc["gyro_y"] = gy;
       doc["gyro_z"] = gz;
@@ -373,25 +375,56 @@ void loop() {
     if (spd < 2.0) spd = 0.0;
     float alt = gps.altitude.meters();
     int sat = gps.satellites.value();
-    
-    // Get timestamp from GPS
+
+    // Convert GPS UTC time to IST (+5:30)
+    int year = gps.date.year();
+    int month = gps.date.month();
+    int day = gps.date.day();
+    int hour = gps.time.hour();
+    int minute = gps.time.minute();
+    int second = gps.time.second();
+
+    // Add 5 hours and 30 minutes
+    minute += 30;
+    hour += 5;
+    if (minute >= 60) {
+      minute -= 60;
+      hour += 1;
+    }
+    if (hour >= 24) {
+      hour -= 24;
+      day += 1;
+      // Simple month/day rollover (does not handle leap years or month lengths, but works for most cases)
+      int daysInMonth[] = {31,28,31,30,31,30,31,31,30,31,30,31};
+      if (month == 2 && ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0))) {
+        daysInMonth[1] = 29; // Leap year
+      }
+      if (day > daysInMonth[month-1]) {
+        day = 1;
+        month += 1;
+        if (month > 12) {
+          month = 1;
+          year += 1;
+        }
+      }
+    }
+
     char timestamp[32];
-    sprintf(timestamp, "%04d-%02d-%02dT%02d:%02d:%02dZ",
-            gps.date.year(), gps.date.month(), gps.date.day(),
-            gps.time.hour(), gps.time.minute(), gps.time.second());
+    sprintf(timestamp, "%04d-%02d-%02dT%02d:%02d:%02d+05:30", year, month, day, hour, minute, second);
     
     // Read motion data
     sensors_event_t a, g, temp;
     mpu.getEvent(&a, &g, &temp);
-    
-    // Read environmental data
     float humidity = dht.readHumidity();
     float temperature = dht.readTemperature();
-    
-    // Send data to Supabase
-    sendToSupabase(lat, lng, spd, alt, sat, 
-                  timestamp, a.acceleration.x, a.acceleration.y, a.acceleration.z,
-                  g.gyro.x, g.gyro.y, g.gyro.z, humidity, temperature);
+
+    // Only send data once every minute
+    if (millis() - lastDataSend >= DATA_SEND_INTERVAL) {
+      sendToSupabase(lat, lng, spd, alt, sat, 
+        timestamp, a.acceleration.x, a.acceleration.y, a.acceleration.z,
+        g.gyro.x, g.gyro.y, g.gyro.z, humidity, temperature);
+      lastDataSend = millis();
+    }
   }
 
   // Add a small delay to prevent CPU overload

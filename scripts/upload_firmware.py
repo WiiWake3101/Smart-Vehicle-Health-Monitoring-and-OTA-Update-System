@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 
 # Default path for binary files
-DEFAULT_BIN_PATH = r"C:\Users\vivek\OneDrive\Documents\Arduino\Devops"
+DEFAULT_BIN_PATH = r"C:\Users\vivek\OneDrive\Documents\Arduino\Devops\build\esp32.esp32.esp32wrover"
 # Path to .env file
 ENV_FILE_PATH = r"C:\Users\vivek\OneDrive\Desktop\CS\Devops\.env"
 
@@ -22,14 +22,14 @@ def load_env_file(env_path):
     return env_vars
 
 # First try to get credentials from environment variables, then from .env file
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_API_KEY = os.environ.get("SUPABASE_ANON_KEY")
+SUPABASE_URL = os.environ.get("EXPO_PUBLIC_SUPABASE_URL")
+SUPABASE_API_KEY = os.environ.get("EXPO_PUBLIC_SUPABASE_ANON_KEY")
 
 # If not found in environment variables, try loading from .env file
 if not SUPABASE_URL or not SUPABASE_API_KEY:
     env_vars = load_env_file(ENV_FILE_PATH)
-    SUPABASE_URL = SUPABASE_URL or env_vars.get("SUPABASE_URL")
-    SUPABASE_API_KEY = SUPABASE_API_KEY or env_vars.get("SUPABASE_ANON_KEY")
+    SUPABASE_URL = SUPABASE_URL or env_vars.get("EXPO_PUBLIC_SUPABASE_URL")
+    SUPABASE_API_KEY = SUPABASE_API_KEY or env_vars.get("EXPO_PUBLIC_SUPABASE_ANON_KEY")
 
 # Check if credentials are set
 if not SUPABASE_URL or not SUPABASE_API_KEY:
@@ -99,7 +99,7 @@ def upload_firmware(binary_path, version, device_type, is_mandatory=False, force
     with open(binary_path, 'rb') as f:
         binary_data = f.read()
     
-    # Create a unique filename
+    # Create a unique filename in the format <device_type>_<version>_<timestamp>.bin
     filename = f"{device_type}_{version}_{datetime.now().strftime('%Y%m%d%H%M%S')}.bin"
     
     # Upload to Supabase Storage
@@ -190,34 +190,42 @@ def list_binary_files():
     return bin_files
 
 def auto_detect_and_upload():
-    """Automatically detect and upload all binary files in the default directory"""
-    bin_files = list_binary_files()
-    if not bin_files:
-        print(f"No binary files found in {DEFAULT_BIN_PATH}")
+    """Automatically detect and upload Devops.ino.bin as GPS-Tracker with incremented version from database"""
+    target_file = "Devops.ino.bin"
+    file_path = os.path.join(DEFAULT_BIN_PATH, target_file)
+    if not os.path.exists(file_path):
+        print(f"{target_file} not found in {DEFAULT_BIN_PATH}")
         return False
-    
-    print(f"Found {len(bin_files)} binary file(s) in {DEFAULT_BIN_PATH}")
-    
-    # Track if all uploads were successful
-    all_success = True
-    
-    for file in bin_files:
-        file_path = os.path.join(DEFAULT_BIN_PATH, file)
-        print(f"Processing {file}...")
-        
-        # Use improved device type detection
-        device_type = auto_detect_device_type(file)
-        
-        # Generate version based on timestamp with more precision
-        version = datetime.now().strftime("%y.%m.%d.%H%M%S")
-        
-        # Upload with auto-detected parameters
-        success = upload_firmware(file_path, version, device_type)
-        
-        if not success:
-            all_success = False
-    
-    return all_success
+
+    print(f"Found {target_file} in {DEFAULT_BIN_PATH}")
+    device_type = "GPS-Tracker"
+
+    # Fetch all versions for GPS-Tracker from the database
+    versions = get_firmware_versions(device_type)
+    # Always increment patch version, even if no previous version exists
+    latest_version = "1.0.0"
+    if versions:
+        def parse_version(v):
+            try:
+                return tuple(map(int, v.get("version", "0.0.0").split(".")))
+            except Exception:
+                return (0, 0, 0)
+        versions_sorted = sorted(versions, key=parse_version, reverse=True)
+        latest = versions_sorted[0].get("version", "1.0.0")
+        parts = latest.split(".")
+        if len(parts) == 3 and all(p.isdigit() for p in parts):
+            # Always increment patch version
+            parts[2] = str(int(parts[2]) + 1)
+            latest_version = ".".join(parts)
+        else:
+            latest_version = "1.0.1"
+    else:
+        # If no previous version, start with 1.0.1 (not 1.0.0)
+        latest_version = "1.0.1"
+
+    print(f"Uploading as version {latest_version}")
+    success = upload_firmware(file_path, latest_version, device_type)
+    return success
 
 def delete_firmware(version=None, device_type=None, all_versions=False):
     """Delete firmware versions from the database"""
@@ -277,21 +285,35 @@ def delete_firmware(version=None, device_type=None, all_versions=False):
     # Also delete storage files
     for record in records:
         if "binary_url" in record:
-            # Extract filename from URL
-            url_parts = record["binary_url"].split("/")
-            if len(url_parts) > 0:
-                filename = url_parts[-1]
-                storage_url = f"{SUPABASE_URL}/storage/v1/object/firmware/{filename}"
-                
-                delete_storage_response = requests.delete(
-                    storage_url,
-                    headers=headers
-                )
-                
-                if delete_storage_response.status_code != 200 and delete_storage_response.status_code != 204:
-                    print(f"Warning: Could not delete storage file: {filename}")
-                else:
-                    print(f"Deleted storage file: {filename}")
+            try:
+                # Extract filename from URL
+                url_parts = record["binary_url"].split("/")
+                if len(url_parts) > 0:
+                    filename = url_parts[-1]
+                    
+                    # Use the correct URL format for admin operations
+                    storage_url = f"{SUPABASE_URL}/storage/v1/object/firmware/{filename}"
+                    
+                    # Create storage-specific headers without Content-Type for DELETE request
+                    storage_headers = {
+                        "Authorization": f"Bearer {SUPABASE_API_KEY}",
+                        "apikey": SUPABASE_API_KEY
+                    }
+                    
+                    print(f"Attempting to delete from: {storage_url}")
+                    delete_storage_response = requests.delete(
+                        storage_url,
+                        headers=storage_headers
+                    )
+                    
+                    if delete_storage_response.status_code == 200 or delete_storage_response.status_code == 204:
+                        print(f"Deleted storage file: {filename}")
+                    else:
+                        print(f"Warning: Could not delete storage file: {filename}")
+                        print(f"Status code: {delete_storage_response.status_code}")
+                        print(f"Response: {delete_storage_response.text}")
+            except Exception as e:
+                print(f"Error while trying to delete storage file: {str(e)}")
     
     return True
 

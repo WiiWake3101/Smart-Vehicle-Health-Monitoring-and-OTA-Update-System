@@ -35,18 +35,27 @@ This system provides real-time monitoring of vehicle health metrics including:
 
 ### ESP32 Hardware Setup
 
-1. Connect the sensors:
+1. **Connect the sensors:**
    - GPS module to pins 16 (RX) and 17 (TX)
    - DHT22 sensor to pin 5
    - MPU6050 to I2C pins (SDA/SCL)
 
-2. Flash the ESP32 firmware:
+2. **Create and configure `secrets.h` in the Arduino IDE:**
+   - In the same folder as your `Devops_1.0.0.ino` file, create a file named `secrets.h`.
+   - Add your WiFi SSID, password, Supabase URL, API key, and user ID as shown below:
+     ```cpp
+     #define WIFI_SSID "your_wifi_ssid"
+     #define WIFI_PASSWORD "your_wifi_password"
+     #define SUPABASE_URL "your_supabase_url"
+     #define SUPABASE_API_KEY "your_supabase_anon_key"
+     #define USER_ID "your_user_id"
+     ```
+   - Save `secrets.h` before compiling and uploading the firmware.
 
-   ```bash
-   cd esp32/sensor_data_uploader
-   arduino-cli compile --fqbn esp32:esp32:esp32 .
-   arduino-cli upload -p [PORT] --fqbn esp32:esp32:esp32 .
-   ```
+3. **Upload the firmware to ESP32:**
+   - Open `Devops_1.0.0.ino` in Arduino IDE.
+   - Select the correct board and port.
+   - Compile and upload the sketch to your ESP32.
 
 ## 🚀 CI/CD Pipeline with Jenkins
 
@@ -104,8 +113,8 @@ This application requires a properly configured `.env` file in the root director
 
 ```
 # Supabase Configuration
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
+EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
 ### Important Notes:
@@ -114,9 +123,49 @@ SUPABASE_ANON_KEY=your_supabase_anon_key
 - For local development, create a `.env.local` file that won't be tracked by git
 - Request actual values from the project administrator
 
+## 🔄 OTA Firmware Upload Script
+
+A Python script (`scripts/upload_firmware.py`) is provided to manage firmware binaries and OTA updates via Supabase.
+
+### Features
+
+- **Automatic Detection**: Finds `.bin` files in the default directory and uploads them.
+- **Manual Upload**: Upload a specific binary with version and device type.
+- **Version Management**: List, delete, and check firmware versions.
+- **Supabase Integration**: Uploads binaries to Supabase Storage and registers metadata in the database.
+
+### Usage
+
+```bash
+# Automatic upload of all binaries in the default directory
+python scripts/upload_firmware.py
+
+# Manual upload
+python scripts/upload_firmware.py upload <binary_path> <version> <device_type> [is_mandatory] [--force]
+
+# List firmware versions
+python scripts/upload_firmware.py list [device_type]
+
+# List available binary files
+python scripts/upload_firmware.py binaries
+
+# Delete a firmware version
+python scripts/upload_firmware.py delete <version> <device_type>
+
+# Delete all firmware versions
+python scripts/upload_firmware.py delete --all
+```
+
+**Note:**  
+- Ensure your `.env` file contains `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY`.
+- The script will look for binaries in `python upload_firmware.py upload "C:\Users\vivek\OneDrive\Documents\Arduino\Devops\build\esp32.esp32.esp32wrover\Devops.ino.bin" 1.0.0 GPS-Tracker false` by default.
+
 ## Getting Started
 
 1. Clone the repository
+2. Create the `.env` file as described above
+3. Install dependencies with `npm install`
+4. Start the development server with `npx expo start`
 2. Create the `.env` file as described above
 3. Install dependencies with `npm install`
 4. Start the development server with `npx expo start`

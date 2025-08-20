@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, ActivityIndicator, TextInput, Keyboard, TouchableWithoutFeedback, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, ActivityIndicator, TextInput, Keyboard, TouchableWithoutFeedback, ScrollView } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { MaterialCommunityIcons, FontAwesome5, Ionicons, Feather } from "@expo/vector-icons";
@@ -104,149 +104,162 @@ const ProfilePage = () => {
       
       <Text style={styles.title}>Profile</Text>
       
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardAvoidingView}
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={true}
-          keyboardShouldPersistTaps="handled"
-          bounces={true}
-          overScrollMode="always"
-        >
-          <View style={styles.card}>
-            {loading ? (
-              <ActivityIndicator color="#4f8cff" size="large" />
-            ) : profile ? (
-              <>
-                <View style={styles.avatarContainer}>
-                  <View style={styles.avatarCircle}>
-                    {/* Person SVG Icon inside the circle */}
-                    <Svg width={54} height={54} viewBox="0 0 54 54">
-                      <Circle cx="27" cy="27" r="27" fill="#4f8cff" />
-                      {/* Head */}
-                      <Circle cx="27" cy="20" r="8" fill="#fff" />
-                      {/* Body */}
-                      <Path
-                        d="M14 44c0-7.18 5.82-13 13-13s13 5.82 13 13"
-                        stroke="#fff"
-                        strokeWidth="3"
-                        fill="none"
-                        strokeLinecap="round"
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <View style={styles.scrollableContent}>
+            <View style={styles.card}>
+              {loading ? (
+                <ActivityIndicator color="#4f8cff" size="large" />
+              ) : profile ? (
+                <>
+                  <View style={styles.avatarContainer}>
+                    <View style={styles.avatarCircle}>
+                      {/* Person SVG Icon inside the circle */}
+                      <Svg width={54} height={54} viewBox="0 0 54 54">
+                        <Circle cx="27" cy="27" r="27" fill="#4f8cff" />
+                        {/* Head */}
+                        <Circle cx="27" cy="20" r="8" fill="#fff" />
+                        {/* Body */}
+                        <Path
+                          d="M14 44c0-7.18 5.82-13 13-13s13 5.82 13 13"
+                          stroke="#fff"
+                          strokeWidth="3"
+                          fill="none"
+                          strokeLinecap="round"
+                        />
+                      </Svg>
+                    </View>
+                  </View>
+                  
+                  {editing ? (
+                    <View style={styles.editSection}>
+                      <Text style={styles.sectionTitle}>Edit Profile</Text>
+                      
+                      <Text style={styles.profileLabel}>Name</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={name}
+                        onChangeText={setName}
+                        editable={!saving}
+                        placeholder="Enter your name"
+                        placeholderTextColor="#bfc9d1"
                       />
-                    </Svg>
-                  </View>
+                      
+                      <Text style={styles.profileLabel}>Email</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={email}
+                        onChangeText={setEmail}
+                        editable={!saving}
+                        placeholder="Enter your email"
+                        placeholderTextColor="#bfc9d1"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                      />
+                      
+                      <Text style={styles.profileLabel}>Phone</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={phone}
+                        onChangeText={setPhone}
+                        editable={!saving}
+                        placeholder="Enter your phone"
+                        placeholderTextColor="#bfc9d1"
+                        keyboardType="phone-pad"
+                        returnKeyType="done"
+                        blurOnSubmit={true}
+                        onSubmitEditing={Keyboard.dismiss}
+                        selectionColor="#4f8cff"
+                      />
+                      
+                      <View style={styles.editButtonRow}>
+                        <TouchableOpacity
+                          style={styles.saveButton}
+                          onPress={handleSave}
+                          disabled={saving}
+                        >
+                          {saving ? (
+                            <ActivityIndicator size="small" color="#fff" />
+                          ) : (
+                            <Text style={styles.saveButtonText}>Save</Text>
+                          )}
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity
+                          style={styles.cancelButton}
+                          onPress={() => setEditing(false)}
+                          disabled={saving}
+                        >
+                          <Text style={styles.cancelButtonText}>Cancel</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <>
+                      <Text style={styles.profileName}>{profile.name || "No Name"}</Text>
+                      <Text style={styles.profileEmail}>{profile.email || "N/A"}</Text>
+                      <Text style={styles.profilePhone}>{profile.phone || "No phone"}</Text>
+                      
+                      <View style={styles.profileInfoBox}>
+                        <Text style={styles.profileLabel}>User ID</Text>
+                        <Text style={styles.profileValue}>{profile.id}</Text>
+                      </View>
+                      
+                      <View style={styles.actionsContainer}>
+                        <TouchableOpacity
+                          style={styles.editProfileButton}
+                          onPress={() => setEditing(true)}
+                        >
+                          <Feather name="edit-2" size={18} color="#fff" />
+                          <Text style={styles.editProfileButtonText}>Edit Profile</Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity
+                          style={styles.logoutButton}
+                          onPress={handleLogout}
+                          disabled={loggingOut}
+                        >
+                          <Feather name="log-out" size={18} color="#fff" />
+                          <Text style={styles.logoutButtonText}>
+                            {loggingOut ? "Logging out..." : "Logout"}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  )}
+                </>
+              ) : (
+                <View style={styles.errorContainer}>
+                  <Feather name="alert-circle" size={36} color="#f44336" />
+                  <Text style={styles.errorText}>Profile not found.</Text>
+                  <Text style={styles.errorSubtext}>Please try logging in again.</Text>
                 </View>
-                
-                {editing ? (
-                  <View style={styles.editSection}>
-                    <Text style={styles.sectionTitle}>Edit Profile</Text>
-                    
-                    <Text style={styles.profileLabel}>Name</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={name}
-                      onChangeText={setName}
-                      editable={!saving}
-                      placeholder="Enter your name"
-                      placeholderTextColor="#bfc9d1"
-                    />
-                    
-                    <Text style={styles.profileLabel}>Email</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={email}
-                      onChangeText={setEmail}
-                      editable={!saving}
-                      placeholder="Enter your email"
-                      placeholderTextColor="#bfc9d1"
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                    />
-                    
-                    <Text style={styles.profileLabel}>Phone</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={phone}
-                      onChangeText={setPhone}
-                      editable={!saving}
-                      placeholder="Enter your phone"
-                      placeholderTextColor="#bfc9d1"
-                      keyboardType="phone-pad"
-                      returnKeyType="done"
-                      blurOnSubmit={true}
-                      onSubmitEditing={Keyboard.dismiss}
-                      selectionColor="#4f8cff"
-                    />
-                    
-                    <View style={styles.editButtonRow}>
-                      <TouchableOpacity
-                        style={styles.saveButton}
-                        onPress={handleSave}
-                        disabled={saving}
-                      >
-                        {saving ? (
-                          <ActivityIndicator size="small" color="#fff" />
-                        ) : (
-                          <Text style={styles.saveButtonText}>Save</Text>
-                        )}
-                      </TouchableOpacity>
-                      
-                      <TouchableOpacity
-                        style={styles.cancelButton}
-                        onPress={() => setEditing(false)}
-                        disabled={saving}
-                      >
-                        <Text style={styles.cancelButtonText}>Cancel</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                ) : (
-                  <>
-                    <Text style={styles.profileName}>{profile.name || "No Name"}</Text>
-                    <Text style={styles.profileEmail}>{profile.email || "N/A"}</Text>
-                    <Text style={styles.profilePhone}>{profile.phone || "No phone"}</Text>
-                    
-                    <View style={styles.profileInfoBox}>
-                      <Text style={styles.profileLabel}>User ID</Text>
-                      <Text style={styles.profileValue}>{profile.id}</Text>
-                    </View>
-                    
-                    <View style={styles.actionsContainer}>
-                      <TouchableOpacity
-                        style={styles.editProfileButton}
-                        onPress={() => setEditing(true)}
-                      >
-                        <Feather name="edit-2" size={18} color="#fff" />
-                        <Text style={styles.editProfileButtonText}>Edit Profile</Text>
-                      </TouchableOpacity>
-                      
-                      <TouchableOpacity
-                        style={styles.logoutButton}
-                        onPress={handleLogout}
-                        disabled={loggingOut}
-                      >
-                        <Feather name="log-out" size={18} color="#fff" />
-                        <Text style={styles.logoutButtonText}>
-                          {loggingOut ? "Logging out..." : "Logout"}
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  </>
-                )}
-              </>
-            ) : (
-              <View style={styles.errorContainer}>
-                <Feather name="alert-circle" size={36} color="#f44336" />
-                <Text style={styles.errorText}>Profile not found.</Text>
-                <Text style={styles.errorSubtext}>Please try logging in again.</Text>
+              )}
+            </View>
+            
+            <View style={styles.infoCard}>
+              <Text style={styles.sectionTitle}>App Information</Text>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>App Version</Text>
+                <Text style={styles.infoValue}>1.0.0</Text>
               </View>
-            )}
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Build</Text>
+                <Text style={styles.infoValue}>2023.10.15</Text>
+              </View>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Device ID</Text>
+                <Text style={styles.infoValue}>DV-{Math.floor(Math.random() * 10000).toString().padStart(4, '0')}</Text>
+              </View>
+            </View>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </TouchableWithoutFeedback>
+      </ScrollView>
       
       <View style={styles.navbar}>
         <TouchableOpacity
@@ -332,26 +345,26 @@ const styles = StyleSheet.create({
     fontSize: 24,
     zIndex: 1,
   },
-  keyboardAvoidingView: {
-    flex: 1,
-    width: "100%",
-  },
   scrollView: {
     width: "100%",
     zIndex: 1,
-    flex: 1,
+    flex: 1, // Add flex: 1 to ensure it takes up available space
   },
   scrollContent: {
     alignItems: "center",
     paddingBottom: NAVBAR_HEIGHT + 20,
-    paddingHorizontal: 16,
+    width: "100%",
+  },
+  scrollableContent: {
+    width: "100%",
+    alignItems: "center",
   },
   card: {
     backgroundColor: "rgba(34, 40, 57, 0.95)",
     borderRadius: 24,
     paddingVertical: 30,
     paddingHorizontal: 24,
-    width: "100%",
+    width: "90%",
     maxWidth: 380,
     alignItems: "center",
     shadowColor: "#1f2687",
@@ -467,7 +480,6 @@ const styles = StyleSheet.create({
   editSection: {
     width: "100%",
     alignItems: "center",
-    paddingBottom: 10,
   },
   input: {
     color: "#fff",
@@ -530,22 +542,6 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   errorSubtext: {
-    color: "#bfc9d1",
-    fontSize: 14,
-    textAlign: "center",
-  },
-  
-  // Navbar styles
-  navbar: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: NAVBAR_HEIGHT,
-    backgroundColor: "rgba(35, 41, 70, 0.98)",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
     color: "#bfc9d1",
     fontSize: 14,
     textAlign: "center",
