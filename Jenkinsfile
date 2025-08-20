@@ -52,6 +52,7 @@ pipeline {
         
             // Compile with correct Arduino sketch structure
             sh 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32/Devops/Devops.ino'
+            }
         }
         stage('Build Mobile App') {
             steps {
