@@ -64,7 +64,7 @@ pipeline {
         }
         stage('Upload Firmware') {
             steps {
-                bat 'python scripts\\upload_firmware.py --bin-path esp32\\build\\esp32.esp32.esp32wrover'
+                bat 'python scripts\\upload_firmware.py'
             }
         }
         stage('Test Mobile App') {
