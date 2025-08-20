@@ -49,7 +49,7 @@ pipeline {
                 // Create proper Arduino sketch structure
                 sh 'mkdir -p esp32/Devops'
                 sh 'cp esp32/Devops_1_0_0.ino esp32/Devops/Devops.ino'
-        
+                sh 'arduino-cli core list'
                 // Compile with correct Arduino sketch structure
                 sh 'arduino-cli compile --fqbn esp32:esp32:esp32wrover esp32/Devops/Devops.ino'
             }
