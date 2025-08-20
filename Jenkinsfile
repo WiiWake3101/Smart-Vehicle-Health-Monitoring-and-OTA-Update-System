@@ -34,6 +34,11 @@ pipeline {
                 '''
             }
         }
+        stage('Show Workspace Structure') {
+            steps {
+                sh 'ls -R'
+            }
+        }
         stage('Install Dependencies') {
             steps {
                 sh 'npm install'
