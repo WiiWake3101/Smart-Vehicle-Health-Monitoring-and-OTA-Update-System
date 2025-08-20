@@ -49,6 +49,7 @@ pipeline {
                 // Set a longer timeout for ESP32 platform installation
                 timeout(time: 120, unit: 'MINUTES') {
                 // Install ESP32 platform with better download settings
+                sh 'arduino-cli config init --overwrite'
                 sh 'arduino-cli config init'
                 sh 'arduino-cli config set network.timeout 120'
                 sh 'arduino-cli config set library.enable_unsafe_install true'
@@ -64,7 +65,7 @@ pipeline {
                 sh 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32/Devops/Devops.ino'
             }
         }
-}
+    }
         stage('Build Mobile App') {
             steps {
                 sh 'npx expo build:android'
