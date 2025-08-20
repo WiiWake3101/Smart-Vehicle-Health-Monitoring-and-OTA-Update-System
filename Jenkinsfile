@@ -44,14 +44,6 @@ pipeline {
                 sh 'npm test'
             }
         }
-        stage('Install ESP32 Platform') {
-            steps {
-                sh 'arduino-cli config init --overwrite'
-                sh 'arduino-cli config add board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json'
-                sh 'arduino-cli core update-index'
-                sh 'arduino-cli core install esp32:esp32'
-            }
-        }
         stage('Compile ESP32 Firmware') {
             steps {
                 // Create proper Arduino sketch structure
