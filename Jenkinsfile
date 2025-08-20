@@ -44,11 +44,13 @@ pipeline {
                 sh 'npm test'
             }
         }
-        stage('Compile ESP32 Firmware') {
-            steps {
-                sh 'arduino-cli compile --fqbn esp32:esp32:esp32 ./esp32/Devops_1_0_0.ino'
-            }
+    stage('Compile ESP32 Firmware') {
+        steps {
+            sh 'mkdir -p esp32/Devops'
+            sh 'cp esp32/Devops_1_0_0.ino esp32/Devops/Devops.ino'
+            sh 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32/Devops/Devops.ino'
         }
+    }
         stage('Build Mobile App') {
             steps {
                 sh 'npx expo build:android'
