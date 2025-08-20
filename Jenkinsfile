@@ -43,7 +43,7 @@ pipeline {
         }
         stage('Install Arduino Libraries') {
             steps {
-                bat 'arduino-cli lib install "TinyGPS++"'
+                bat 'arduino-cli lib install "TinyGPSPlus"'
                 bat 'arduino-cli lib install "Adafruit MPU6050"'
                 bat 'arduino-cli lib install "DHT sensor library"'
                 bat 'arduino-cli lib install "ArduinoJson"'
