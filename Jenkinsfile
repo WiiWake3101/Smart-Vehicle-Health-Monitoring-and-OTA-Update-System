@@ -41,18 +41,11 @@ pipeline {
                 bat 'npm install'
             }
         }
-        stage('Build Mobile App') {
+        stage('Compile ESP32 Firmware') {
             steps {
-                bat '''
-                set HOME=C:\\Users\\vivek
-                set USERPROFILE=C:\\Users\\vivek
-                npx eas build -p android
-                '''
-                bat '''
-                set HOME=C:\\Users\\vivek
-                set USERPROFILE=C:\\Users\\vivek
-                npx eas build -p ios
-                '''
+                bat 'mkdir esp32\\Devops'
+                bat 'copy esp32\\Devops_1_0_0.ino esp32\\Devops\\Devops.ino'
+                bat 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32\\Devops\\Devops.ino'
             }
         }
         stage('Upload Firmware') {
