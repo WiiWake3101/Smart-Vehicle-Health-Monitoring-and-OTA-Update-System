@@ -46,20 +46,25 @@ pipeline {
         }
     stage('Compile ESP32 Firmware') {
         steps {
-            // Install ESP32 platform
-            sh 'arduino-cli config init'
-            sh 'arduino-cli config add board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json'
-            sh 'arduino-cli core update-index'
-            sh 'arduino-cli core install esp32:esp32'
-        
-            // Create proper Arduino sketch structure
-            sh 'mkdir -p esp32/Devops'
-            sh 'cp esp32/Devops_1_0_0.ino esp32/Devops/Devops.ino'
-        
-            // Compile with correct Arduino sketch structure
-            sh 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32/Devops/Devops.ino'
+                // Set a longer timeout for ESP32 platform installation
+                timeout(time: 120, unit: 'MINUTES') {
+                // Install ESP32 platform with better download settings
+                sh 'arduino-cli config init'
+                sh 'arduino-cli config set network.timeout 120'
+                sh 'arduino-cli config set library.enable_unsafe_install true'
+                sh 'arduino-cli config add board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json'
+                sh 'arduino-cli core update-index'
+                sh 'arduino-cli core install esp32:esp32'
+            
+                // Create proper Arduino sketch structure
+                sh 'mkdir -p esp32/Devops'
+                sh 'cp esp32/Devops_1_0_0.ino esp32/Devops/Devops.ino'
+            
+                // Compile with correct Arduino sketch structure
+                sh 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32/Devops/Devops.ino'
+            }
         }
-    }
+}
         stage('Build Mobile App') {
             steps {
                 sh 'npx expo build:android'
