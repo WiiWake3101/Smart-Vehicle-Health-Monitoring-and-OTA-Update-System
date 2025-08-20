@@ -1,6 +1,5 @@
 pipeline {
-    agent none
-    
+    agent any
     environment {
         EXPO_PUBLIC_SUPABASE_URL = credentials('EXPO_PUBLIC_SUPABASE_URL')
         EXPO_PUBLIC_SUPABASE_ANON_KEY = credentials('EXPO_PUBLIC_SUPABASE_ANON_KEY')
@@ -16,100 +15,63 @@ pipeline {
                 checkout scm
             }
         }
-        
-        stage('Arduino Tasks') {
-            agent {
-                dockerfile {
-                    filename 'Dockerfile.arduino-agent'
-                    dir 'Devops'
-                    args '-v ${WORKSPACE}:/app'
-                }
-            }
-            stages {
-                stage('Verify Arduino Setup') {
-                    steps {
-                        sh 'arduino-cli version'
-                        sh 'arduino-cli core list'
-                        sh 'arduino-cli board list'
-                        sh 'arduino-cli lib list'
-                    }
-                }
-                
-                stage('Create secrets.h') {
-                    steps {
-                        sh '''
-                        echo "#define WIFI_SSID \\"$WIFI_SSID\\"" > esp32/secrets.h
-                        echo "#define WIFI_PASSWORD \\"$WIFI_PASSWORD\\"" >> esp32/secrets.h
-                        echo "#define SUPABASE_URL \\"$SUPABASE_URL\\"" >> esp32/secrets.h
-                        echo "#define SUPABASE_API_KEY \\"$SUPABASE_API_KEY\\"" >> esp32/secrets.h
-                        echo "#define USER_ID \\"$USER_ID\\"" >> esp32/secrets.h
-                        '''
-                    }
-                }
-                
-                stage('Compile ESP32 Firmware') {
-                    steps {
-                        sh 'mkdir -p esp32/Devops'
-                        sh 'cp esp32/Devops_1_0_0.ino esp32/Devops/Devops.ino'
-                        
-                        // Verbose compilation for better debugging
-                        sh 'arduino-cli compile --fqbn esp32:esp32:esp32wrover esp32/Devops --verbose'
-                    }
-                }
-                
-                stage('Upload Firmware') {
-                    when {
-                        expression { return fileExists('scripts/upload_firmware.py') }
-                    }
-                    steps {
-                        sh 'python3 scripts/upload_firmware.py'
-                    }
-                }
+        stage('Create .env') {
+            steps {
+                sh '''
+                echo "EXPO_PUBLIC_SUPABASE_URL=$EXPO_PUBLIC_SUPABASE_URL" > .env
+                echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=$EXPO_PUBLIC_SUPABASE_ANON_KEY" >> .env
+                '''
             }
         }
-        
-        stage('Mobile App Tasks') {
-            agent {
-                docker {
-                    image 'node:18'
-                    args '-v ${WORKSPACE}:/app -w /app'
-                }
-            }
-            stages {
-                stage('Create .env') {
-                    steps {
-                        sh '''
-                        echo "EXPO_PUBLIC_SUPABASE_URL=$EXPO_PUBLIC_SUPABASE_URL" > .env
-                        echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=$EXPO_PUBLIC_SUPABASE_ANON_KEY" >> .env
-                        '''
-                    }
-                }
-                
-                stage('Install Node Dependencies') {
-                    steps {
-                        sh 'npm install'
-                    }
-                }
-                
-                stage('Run Tests') {
-                    steps {
-                        sh 'npm test'
-                    }
-                }
-                
-                stage('Build Mobile App') {
-                    steps {
-                        sh 'npx eas build --platform android --non-interactive'
-                        sh 'npx eas build --platform ios --non-interactive'
-                    }
-                }
+        stage('Create secrets.h') {
+            steps {
+                sh '''
+                echo "#define WIFI_SSID \\"$WIFI_SSID\\"" > esp32/secrets.h
+                echo "#define WIFI_PASSWORD \\"$WIFI_PASSWORD\\"" >> esp32/secrets.h
+                echo "#define SUPABASE_URL \\"$SUPABASE_URL\\"" >> esp32/secrets.h
+                echo "#define SUPABASE_API_KEY \\"$SUPABASE_API_KEY\\"" >> esp32/secrets.h
+                echo "#define USER_ID \\"$USER_ID\\"" >> esp32/secrets.h
+                '''
             }
         }
-    }
-    
-    post {
-        success {
-            archiveArtifacts artifacts: 'esp32/Devops/build/**/*.bin', allowEmptyArchive: true
+        stage('Install Dependencies') {
+            steps {
+                sh 'npm install'
+            }
+        }
+        stage('Run Tests') {
+            steps {
+                sh 'npm test'
+            }
+        }
+        stage('Install ESP32 Platform') {
+            steps {
+                sh 'arduino-cli config init --overwrite'
+                sh 'arduino-cli config add board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json'
+                sh 'arduino-cli core update-index'
+                sh 'arduino-cli core install esp32:esp32'
+            }
+        }
+        stage('Compile ESP32 Firmware') {
+            steps {
+                // Create proper Arduino sketch structure
+                sh 'mkdir -p esp32/Devops'
+                sh 'cp esp32/Devops_1_0_0.ino esp32/Devops/Devops.ino'
+        
+                // Compile with correct Arduino sketch structure
+                sh 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32/Devops/Devops.ino'
+            }
+        }
+        stage('Build Mobile App') {
+            steps {
+                sh 'npx expo build:android'
+                sh 'npx expo build:ios'
+            }
+        }
+        stage('Upload Firmware') {
+            steps {
+                sh 'python scripts/upload_firmware.py'
+            }
         }
     }
 }
