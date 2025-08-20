@@ -46,7 +46,7 @@ pipeline {
         }
         stage('Compile ESP32 Firmware') {
             steps {
-                sh 'arduino-cli compile --fqbn esp32:esp32:esp32 $WORKSPACE /esp32/Devops_1.0.0.ino'
+                sh 'arduino-cli compile --fqbn esp32:esp32:esp32 ../esp32/Devops_1.0.0.ino'
             }
         }
         stage('Build Mobile App') {
