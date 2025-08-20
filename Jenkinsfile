@@ -57,6 +57,11 @@ pipeline {
                 bat 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32\\Devops\\Devops.ino'
             }
         }
+        stage('Install Python Dependencies') {
+            steps{
+                bat 'pip install -r scripts\\requirements.txt'
+            }
+        }
         stage('Upload Firmware') {
             steps {
                 bat 'python scripts\\upload_firmware.py'
