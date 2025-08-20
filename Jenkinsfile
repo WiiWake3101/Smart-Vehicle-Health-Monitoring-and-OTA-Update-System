@@ -36,12 +36,26 @@ pipeline {
         }
         stage('Install Dependencies') {
             steps {
-                sh 'npm install'
+                script {
+                    def isWSLLocalSystem = sh(script: 'whoami | grep -q "root" && uname -a | grep -qi "microsoft"', returnStatus: true) == 0
+                    if (isWSLLocalSystem) {
+                        echo "Skipping npm install: Running WSL as Local System is not supported."
+                    } else {
+                        sh 'npm install'
+                    }
+                }
             }
         }
         stage('Run Tests') {
             steps {
-                sh 'npm test'
+                script {
+                    def isWSLLocalSystem = sh(script: 'whoami | grep -q "root" && uname -a | grep -qi "microsoft"', returnStatus: true) == 0
+                    if (isWSLLocalSystem) {
+                        echo "Skipping npm test: Running WSL as Local System is not supported."
+                    } else {
+                        sh 'npm test'
+                    }
+                }
             }
         }
         stage('Install ESP32 Platform') {
