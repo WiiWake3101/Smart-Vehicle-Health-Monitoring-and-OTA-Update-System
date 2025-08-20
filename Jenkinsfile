@@ -34,11 +34,6 @@ pipeline {
                 '''
             }
         }
-        stage('Show Workspace Structure') {
-            steps {
-                sh 'ls -R'
-            }
-        }
         stage('Install Dependencies') {
             steps {
                 sh 'npm install'
@@ -51,7 +46,7 @@ pipeline {
         }
         stage('Compile ESP32 Firmware') {
             steps {
-                sh 'arduino-cli compile --fqbn esp32:esp32:esp32 ./Devops/esp32/Devops_1_0_0.ino'
+                sh 'arduino-cli compile --fqbn esp32:esp32:esp32 ./esp32/Devops_1_0_0.ino'
             }
         }
         stage('Build Mobile App') {
