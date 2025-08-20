@@ -65,9 +65,7 @@ pipeline {
         stage('Deploy Mobile App') {
             steps {
                 // Build Android APK
-                bat 'eas build -p android --profile production --platform android'
-                // Build iOS IPA (requires Apple Developer account)
-                bat 'eas build -p ios --profile production --platform ios'
+                bat 'eas build --platform android'
                 // Check build status (optional)
                 bat 'eas build:list'
             }   
