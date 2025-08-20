@@ -64,9 +64,7 @@ pipeline {
         }
         stage('Upload Firmware') {
             steps {
-                bat 'ls'
-                bat 'cd scripts'
-                bat 'python upload_firmware.py'
+                bat 'python scripts\\upload_firmware.py'
             }
         }
         stage('Test Mobile App') {
