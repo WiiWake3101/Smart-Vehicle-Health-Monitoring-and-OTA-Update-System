@@ -8,8 +8,6 @@ pipeline {
         SUPABASE_URL = credentials('SUPABASE_URL')
         SUPABASE_API_KEY = credentials('SUPABASE_API_KEY')
         USER_ID = credentials('USER_ID')
-        HOME = 'C:\\Users\\vivek'
-        USERPROFILE = 'C:\\Users\\vivek'
     }
     stages {
         stage('Checkout') {
@@ -57,6 +55,11 @@ pipeline {
                 bat 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32\\Devops\\Devops.ino'
             }
         }
+        stage('Install Python Dependencies') {
+            steps {
+                bat 'pip install -r scripts\\requirements.txt'
+            }
+        }
         stage('Upload Firmware') {
             steps {
                 bat 'python scripts\\upload_firmware.py'
@@ -65,6 +68,12 @@ pipeline {
         stage('Test Mobile App') {
             steps {
                 bat 'npm test'
+            }
+        }
+        stage('Build Mobile App') {
+            steps {
+                bat 'npx expo build:android'
+                bat 'npx expo build:ios'
             }
         }
     }
