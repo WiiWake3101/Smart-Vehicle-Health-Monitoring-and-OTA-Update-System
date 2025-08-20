@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'windows' } // Change 'windows' to your new agent label
+    agent any
     environment {
         EXPO_PUBLIC_SUPABASE_URL = credentials('EXPO_PUBLIC_SUPABASE_URL')
         EXPO_PUBLIC_SUPABASE_ANON_KEY = credentials('EXPO_PUBLIC_SUPABASE_ANON_KEY')
