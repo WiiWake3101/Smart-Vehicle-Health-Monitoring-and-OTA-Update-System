@@ -1,5 +1,6 @@
 pipeline {
-    agent any
+    agent none
+    
     environment {
         EXPO_PUBLIC_SUPABASE_URL = credentials('EXPO_PUBLIC_SUPABASE_URL')
         EXPO_PUBLIC_SUPABASE_ANON_KEY = credentials('EXPO_PUBLIC_SUPABASE_ANON_KEY')
@@ -9,8 +10,10 @@ pipeline {
         SUPABASE_API_KEY = credentials('SUPABASE_API_KEY')
         USER_ID = credentials('USER_ID')
     }
+    
     stages {
         stage('Checkout') {
+            agent any
             steps {
                 checkout scm
             }
@@ -42,6 +45,24 @@ pipeline {
         stage('Run Tests') {
             steps {
                 sh 'npm test'
+            }
+        }
+        stage('Install ESP32 Platform') {
+            steps {
+                sh 'arduino-cli config init --overwrite'
+                sh 'arduino-cli config add board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json'
+                sh 'arduino-cli core update-index'
+                sh 'arduino-cli core install esp32:esp32'
+            }
+        }
+        stage('Compile ESP32 Firmware') {
+            steps {
+                // Create proper Arduino sketch structure
+                sh 'mkdir -p esp32/Devops'
+                sh 'cp esp32/Devops_1_0_0.ino esp32/Devops/Devops.ino'
+        
+                // Compile with correct Arduino sketch structure
+                sh 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32/Devops/Devops.ino'
             }
         }
         stage('Build Mobile App') {
