@@ -5,9 +5,9 @@ import json
 from datetime import datetime
 
 # Default path for binary files
-DEFAULT_BIN_PATH = r"C:\Users\vivek\OneDrive\Documents\Arduino\Devops\build\esp32.esp32.esp32wrover"
+DEFAULT_BIN_PATH = r".\Devops\esp32\build\esp32.esp32.esp32wrover"
 # Path to .env file
-ENV_FILE_PATH = r"C:\Users\vivek\OneDrive\Desktop\CS\Devops\.env"
+ENV_FILE_PATH = r".\Devops\.env"
 
 def load_env_file(env_path):
     """Load environment variables from a .env file"""
