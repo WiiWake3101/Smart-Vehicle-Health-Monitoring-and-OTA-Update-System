@@ -41,8 +41,8 @@ pipeline {
         }
         stage('Build Mobile App') {
             steps {
-                bat 'npx eas build -p android'
-                bat 'npx eas build -p ios'
+                bat '"C:\\Program Files\\nodejs\\npx.cmd" eas build -p android'
+                bat '"C:\\Program Files\\nodejs\\npx.cmd" eas build -p ios'
             }
         }
         stage('Upload Firmware') {
