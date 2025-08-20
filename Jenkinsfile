@@ -65,17 +65,12 @@ pipeline {
         stage('Deploy Mobile App') {
             steps {
                 // Build Android APK
-                bat 'npx expo build:android --type apk'
+                bat 'eas build -p android --profile production --platform android'
                 // Build iOS IPA (requires Apple Developer account)
-                bat 'npx expo build:ios --type archive'
-        
-                // Download the builds (optional)
-                bat 'npx expo build:status'
-        
-                // You can add commands to upload builds to distribution platforms
-                // For example, to upload to Firebase App Distribution:
-                // bat 'firebase appdistribution:distribute path/to/app.apk --app YOUR_FIREBASE_APP_ID --groups "testers"'
-            }
+                bat 'eas build -p ios --profile production --platform ios'
+                // Check build status (optional)
+                bat 'eas build:list'
+            }   
         }
         stage('Upload Firmware') {
             steps {
