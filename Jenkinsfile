@@ -43,7 +43,7 @@ pipeline {
         }
         stage('Compile ESP32 Firmware') {
             steps {
-                bat 'mkdir esp32\\Devops'
+                bat 'if not exist esp32\\Devops mkdir esp32\\Devops'
                 bat 'copy esp32\\Devops_1_0_0.ino esp32\\Devops\\Devops.ino'
                 bat 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32\\Devops\\Devops.ino'
             }
