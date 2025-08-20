@@ -1,5 +1,12 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'your-registry/arduino-esp32:latest'
+            // Alternative: Use a public image if available
+            // image 'arduino/arduino-cli:latest'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
     environment {
         EXPO_PUBLIC_SUPABASE_URL = credentials('EXPO_PUBLIC_SUPABASE_URL')
         EXPO_PUBLIC_SUPABASE_ANON_KEY = credentials('EXPO_PUBLIC_SUPABASE_ANON_KEY')
@@ -8,9 +15,6 @@ pipeline {
         SUPABASE_URL = credentials('SUPABASE_URL')
         SUPABASE_API_KEY = credentials('SUPABASE_API_KEY')
         USER_ID = credentials('USER_ID')
-        // Set Arduino CLI config directory
-        ARDUINO_CLI_CONFIG = "${WORKSPACE}/.arduino15"
-        ARDUINO_USER_DIR = "${WORKSPACE}/Arduino"
     }
     stages {
         stage('Checkout') {
@@ -18,47 +22,16 @@ pipeline {
                 checkout scm
             }
         }
-        stage('Setup Arduino CLI') {
+        
+        stage('Verify Arduino Setup') {
             steps {
-                script {
-                    // Create Arduino directories
-                    sh 'mkdir -p ${ARDUINO_CLI_CONFIG}'
-                    sh 'mkdir -p ${ARDUINO_USER_DIR}'
-                    
-                    // Initialize Arduino CLI config if not exists
-                    sh '''
-                    if [ ! -f ${ARDUINO_CLI_CONFIG}/arduino-cli.yaml ]; then
-                        arduino-cli config init --config-dir ${ARDUINO_CLI_CONFIG}
-                    fi
-                    '''
-                    
-                    // Add ESP32 board manager URL to config
-                    sh '''
-                    arduino-cli config add board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json --config-dir ${ARDUINO_CLI_CONFIG}
-                    '''
-                    
-                    // Update package index
-                    sh 'arduino-cli core update-index --config-dir ${ARDUINO_CLI_CONFIG}'
-                    
-                    // Install ESP32 core if not already installed
-                    sh '''
-                    if ! arduino-cli core list --config-dir ${ARDUINO_CLI_CONFIG} | grep -q "esp32:esp32"; then
-                        arduino-cli core install esp32:esp32 --config-dir ${ARDUINO_CLI_CONFIG}
-                    fi
-                    '''
-                    
-                    // Install required libraries if not already installed
-                    sh '''
-                    arduino-cli lib install --config-dir ${ARDUINO_CLI_CONFIG} "WiFi" || echo "WiFi library already installed or built-in"
-                    arduino-cli lib install --config-dir ${ARDUINO_CLI_CONFIG} "ArduinoHttpClient" || echo "ArduinoHttpClient already installed"
-                    arduino-cli lib install --config-dir ${ARDUINO_CLI_CONFIG} "ArduinoJson" || echo "ArduinoJson already installed"
-                    '''
-                    
-                    // Verify installation
-                    sh 'arduino-cli core list --config-dir ${ARDUINO_CLI_CONFIG}'
-                }
+                sh 'arduino-cli version'
+                sh 'arduino-cli core list'
+                sh 'node --version'
+                sh 'npm --version'
             }
         }
+        
         stage('Create .env') {
             steps {
                 sh '''
@@ -67,6 +40,7 @@ pipeline {
                 '''
             }
         }
+        
         stage('Create secrets.h') {
             steps {
                 sh '''
@@ -78,44 +52,51 @@ pipeline {
                 '''
             }
         }
-        stage('Install Dependencies') {
+        
+        stage('Install Node Dependencies') {
             steps {
                 sh 'npm install'
             }
         }
+        
         stage('Run Tests') {
             steps {
                 sh 'npm test'
             }
         }
+        
         stage('Compile ESP32 Firmware') {
             steps {
+                sh 'mkdir -p esp32/Devops'
+                sh 'cp esp32/Devops_1_0_0.ino esp32/Devops/Devops.ino'
+                sh 'arduino-cli compile --fqbn esp32:esp32:esp32wrover esp32/Devops'
+            }
+        }
+        
+        stage('Build Mobile App') {
+            steps {
+                // Use EAS Build (modern Expo build system)
+                sh 'npx eas build --platform android --non-interactive'
+                sh 'npx eas build --platform ios --non-interactive'
+            }
+        }
+        
+        stage('Upload Firmware') {
+            steps {
                 script {
-                    // Create proper Arduino sketch structure
-                    sh 'mkdir -p esp32/Devops'
-                    sh 'cp esp32/Devops_1_0_0.ino esp32/Devops/Devops.ino'
-                    
-                    // Compile with correct Arduino sketch structure
-                    sh 'arduino-cli compile --fqbn esp32:esp32:esp32wrover --config-dir ${ARDUINO_CLI_CONFIG} esp32/Devops/Devops.ino'
+                    if (fileExists('scripts/upload_firmware.py')) {
+                        sh 'python3 scripts/upload_firmware.py'
+                    } else {
+                        echo 'Upload script not found, skipping firmware upload'
+                    }
                 }
             }
         }
-        stage('Build Mobile App') {
-            steps {
-                sh 'npx expo build:android'
-                sh 'npx expo build:ios'
-            }
-        }
-        stage('Upload Firmware') {
-            steps {
-                sh 'python scripts/upload_firmware.py'
-            }
-        }
     }
+    
     post {
-        always {
-            // Clean up Arduino directories if needed
-            sh 'rm -rf ${ARDUINO_CLI_CONFIG} ${ARDUINO_USER_DIR}'
+        success {
+            archiveArtifacts artifacts: 'esp32/Devops/build/**/*.bin', allowEmptyArchive: true
         }
     }
 }
