@@ -41,6 +41,14 @@ pipeline {
                 bat 'npm install'
             }
         }
+        stage('Install Arduino Libraries') {
+            steps {
+                bat 'arduino-cli lib install "TinyGPS++"'
+                bat 'arduino-cli lib install "Adafruit MPU6050"'
+                bat 'arduino-cli lib install "DHT sensor library"'
+                bat 'arduino-cli lib install "ArduinoJson"'
+            }
+        }
         stage('Compile ESP32 Firmware') {
             steps {
                 bat 'if not exist esp32\\Devops mkdir esp32\\Devops'
