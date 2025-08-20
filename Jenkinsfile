@@ -50,7 +50,6 @@ pipeline {
                 timeout(time: 120, unit: 'MINUTES') {
                 // Install ESP32 platform with better download settings
                 sh 'arduino-cli config init --overwrite'
-                sh 'arduino-cli config init'
                 sh 'arduino-cli config set network.timeout 120'
                 sh 'arduino-cli config set library.enable_unsafe_install true'
                 sh 'arduino-cli config add board_manager.additional_urls https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json'
