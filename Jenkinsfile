@@ -55,7 +55,7 @@ pipeline {
                 bat 'copy /Y esp32\\secrets.h esp32\\Devops\\secrets.h'
                 bat 'echo AFTER COPY: listing esp32\\Devops folder && dir esp32\\Devops'
                 bat 'arduino-cli core list || echo "arduino-cli core list failed"'
-                bat 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32\\Devops\\Devops.ino'
+                bat 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32\Devops\Devops.ino'
             }
         }
         stage('Install Python Dependencies') {
