@@ -41,7 +41,7 @@ pipeline {
         }
         stage('Run Tests') {
             steps {
-                sh 'npx test'
+                sh 'npm test'
             }
         }
         stage('Compile ESP32 Firmware') {
