@@ -52,7 +52,7 @@ pipeline {
                 bat 'if not exist esp32\\Devops mkdir esp32\\Devops'
                 bat 'copy esp32\\Devops_1_0_0.ino esp32\\Devops\\Devops.ino'
                 bat 'copy esp32\\secrets.h esp32\\Devops\\secrets.h'
-                bat 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32\\Devops\\Devops.ino'
+                bat 'arduino-cli compile --fqbn esp32:esp32:esp32wrover esp32\\Devops\\Devops.ino'
             }
         }
         stage('Install Python Dependencies') {
