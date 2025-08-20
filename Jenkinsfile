@@ -50,11 +50,8 @@ pipeline {
         stage('Compile ESP32 Firmware') {
             steps {
                 bat 'if not exist esp32\\Devops mkdir esp32\\Devops'
-                bat 'echo BEFORE COPY: listing esp32 folder && dir esp32'
                 bat 'copy /Y esp32\\Devops_1_0_0.ino esp32\\Devops\\Devops.ino'
                 bat 'copy /Y esp32\\secrets.h esp32\\Devops\\secrets.h'
-                bat 'echo AFTER COPY: listing esp32\\Devops folder && dir esp32\\Devops'
-                bat 'arduino-cli core list || echo "arduino-cli core list failed"'
                 bat 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32\\Devops\\Devops.ino'
             }
         }
