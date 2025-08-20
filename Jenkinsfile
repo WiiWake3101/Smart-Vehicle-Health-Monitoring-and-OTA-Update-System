@@ -64,6 +64,7 @@ pipeline {
         }
         stage('Upload Firmware') {
             steps {
+                bat'ls'
                 bat 'python scripts\\upload_firmware.py'
             }
         }
