@@ -8,6 +8,8 @@ pipeline {
         SUPABASE_URL = credentials('SUPABASE_URL')
         SUPABASE_API_KEY = credentials('SUPABASE_API_KEY')
         USER_ID = credentials('USER_ID')
+        HOME = 'C:\\Users\\vivek'
+        USERPROFILE = 'C:\\Users\\vivek'
     }
     stages {
         stage('Checkout') {
@@ -41,8 +43,16 @@ pipeline {
         }
         stage('Build Mobile App') {
             steps {
-                bat '"C:\\Program Files\\nodejs\\npx.cmd" eas build -p android'
-                bat '"C:\\Program Files\\nodejs\\npx.cmd" eas build -p ios'
+                bat '''
+                set HOME=C:\\Users\\vivek
+                set USERPROFILE=C:\\Users\\vivek
+                npx eas build -p android
+                '''
+                bat '''
+                set HOME=C:\\Users\\vivek
+                set USERPROFILE=C:\\Users\\vivek
+                npx eas build -p ios
+                '''
             }
         }
         stage('Upload Firmware') {
