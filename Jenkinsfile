@@ -49,7 +49,7 @@ pipeline {
         }
         stage('Compile ESP32 Firmware') {
             steps {
-                bat 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32\\Devops_1_0_0.ino'
+                bat 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32\\Devops_1_0_0'
             }
         }
         stage('Install Python Dependencies') {
