@@ -1,0 +1,33 @@
+FROM node:18-slim
+
+# Install required dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    git \
+    python3 \
+    python3-pip \
+    cmake \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Arduino CLI
+RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=/usr/local/bin sh
+
+# Setup Arduino CLI configuration and install ESP32 core
+RUN arduino-cli config init \
+    && arduino-cli core update-index \
+    && arduino-cli core install esp32:esp32@2.0.9
+
+# Install required libraries
+RUN arduino-cli lib install \
+    "WiFi" \
+    "ArduinoJson" \
+    "HTTPClient" \
+    "TinyGPSPlus" \
+    "Adafruit MPU6050" \
+    "DHT sensor library" \
+    "Adafruit Unified Sensor" \
+    "Update" \
+    "Wire"
+
+WORKDIR /app
