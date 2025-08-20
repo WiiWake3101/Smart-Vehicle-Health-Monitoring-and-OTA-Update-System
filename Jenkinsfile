@@ -41,8 +41,8 @@ pipeline {
         }
         stage('Build Mobile App') {
             steps {
-                bat 'npx expo build:android'
-                bat 'npx expo build:ios'
+                bat 'npx eas build -p android'
+                bat 'npx eas build -p ios'
             }
         }
         stage('Upload Firmware') {
