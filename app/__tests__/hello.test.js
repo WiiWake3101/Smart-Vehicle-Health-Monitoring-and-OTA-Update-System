@@ -11,7 +11,7 @@ jest.mock('@react-navigation/native', () => ({
 }));
 
 // Mock supabase module if used in SignupPage
-jest.mock('../utils/supabase', () => ({
+jest.mock('../lib/supabase', () => ({
   supabase: {
     auth: {
       signUp: (...args) => mockSignUp(...args),
