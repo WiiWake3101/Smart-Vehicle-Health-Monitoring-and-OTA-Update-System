@@ -11,7 +11,7 @@ jest.mock('@react-navigation/native', () => ({
 }));
 
 // Mock supabase module if used in SignupPage
-jest.mock('../lib/supabase', () => ({
+jest.mock('../../lib/supabase', () => ({
   supabase: {
     auth: {
       signUp: (...args) => mockSignUp(...args),
@@ -19,7 +19,7 @@ jest.mock('../lib/supabase', () => ({
   },
 }));
 
-import SignupPage from '../components/signup_page';
+import SignupPage from '../../components/signup_page';
 
 test('renders Sign Up title', () => {
   const { getByText } = render(<SignupPage />);
