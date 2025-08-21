@@ -1,5 +1,9 @@
-const { test, expect } = require('@jest/globals');
+import React from 'react';
+import { render } from '@testing-library/react-native';
+import HomePage from '../../components/HomePage';
 
-test('hello world!', () => {
-	expect(1 + 1).toBe(2);
+test('HomePage renders', () => {
+  const { getByText } = render(<HomePage />);
+  // Replace 'Home' with actual text in your HomePage component
+  expect(getByText('Home')).toBeTruthy();
 });
