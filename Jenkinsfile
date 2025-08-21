@@ -65,12 +65,13 @@ pipeline {
         }
         stage('Deploy Mobile App') {
             steps {
-                bat 'npm eas login --token %EXPO_TOKEN%'
-                bat 'npm eas --version'
+                bat 'npm install -g eas-cli'
+                bat 'eas login --token %EXPO_TOKEN%'
+                bat 'eas --version'
                 // Build Android APK
-                bat 'npm eas build --platform android --non-interactive'
+                bat 'eas build --platform android --non-interactive'
                 // Check build status (optional)
-                bat 'npm eas build:list'
+                bat 'eas build:list'
             }
         }
         stage('Upload Firmware') {
