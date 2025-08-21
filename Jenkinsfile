@@ -57,27 +57,11 @@ pipeline {
                 bat 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32\\Devops\\Devops.ino'
             }
         }
-        stage('Install Python Dependencies') {
-            steps{
-                bat 'pip install -r scripts\\requirements.txt'
-            }
-        }
-        stage('Start Android Emulator') {
-            steps {
-                bat '"C:\\Users\\vivek\\AppData\\Local\\Android\\Sdk\\emulator\\emulator.exe" -avd Medium_Phone'
-                bat 'adb wait-for-device'
-            }
-        }
         stage('Run Mobile App (Dev Mode)') {
                 steps {
                     timeout(time: 2, unit: 'MINUTES') {
                     bat 'npm start --android'
                 }
-            }
-        }
-        stage('Upload Firmware') {
-            steps {
-                bat 'python scripts\\upload_firmware.py'
             }
         }
         stage('Test Mobile App') {
