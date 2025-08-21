@@ -57,11 +57,6 @@ pipeline {
                 bat 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32\\Devops\\Devops.ino'
             }
         }
-        stage('Test Database test for Mobile App') {
-            steps {
-                bat 'set EXPO_PUBLIC_SUPABASE_URL=%EXPO_PUBLIC_SUPABASE_URL% && set EXPO_PUBLIC_SUPABASE_ANON_KEY=%EXPO_PUBLIC_SUPABASE_ANON_KEY% && npm test'
-            }
-        }
         stage('App Test') {
             steps {
                 bat 'npm test'
