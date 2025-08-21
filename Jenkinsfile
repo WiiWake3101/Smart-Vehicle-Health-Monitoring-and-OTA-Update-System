@@ -66,9 +66,9 @@ pipeline {
         stage('Deploy Mobile App') {
             steps {
                 // Build Android APK
-                bat 'npx eas build --platform android --non-interactive'
+                bat 'eas build --platform android --non-interactive'
                 // Check build status (optional)
-                bat 'npx eas build:list'
+                bat 'eas build:list'
             }   
         }
         stage('Upload Firmware') {
