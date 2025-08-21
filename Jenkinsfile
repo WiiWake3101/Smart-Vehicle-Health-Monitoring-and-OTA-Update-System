@@ -57,14 +57,7 @@ pipeline {
                 bat 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32\\Devops\\Devops.ino'
             }
         }
-        stage('Run Mobile App (Dev Mode)') {
-                steps {
-                    timeout(time: 2, unit: 'MINUTES') {
-                    bat 'npm start --android'
-                }
-            }
-        }
-        stage('Test Mobile App') {
+        stage('Test Database test for Mobile App') {
             steps {
                 bat 'npm test'
             }
