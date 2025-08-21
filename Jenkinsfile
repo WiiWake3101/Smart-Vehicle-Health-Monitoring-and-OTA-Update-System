@@ -63,8 +63,10 @@ pipeline {
             }
         }
         stage('Run Mobile App (Dev Mode)') {
-            steps {
-                bat 'npm start'
+                steps {
+                    timeout(time: 2, unit: 'MINUTES') {
+                    bat 'npm start --android'
+                }
             }
         }
         stage('Upload Firmware') {
