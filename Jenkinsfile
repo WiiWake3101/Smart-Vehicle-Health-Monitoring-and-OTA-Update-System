@@ -1,7 +1,6 @@
 pipeline {
     agent any
     environment {
-        EXPO_TOKEN = credentials('EXPO_TOKEN')
         EXPO_PUBLIC_SUPABASE_URL = credentials('EXPO_PUBLIC_SUPABASE_URL')
         EXPO_PUBLIC_SUPABASE_ANON_KEY = credentials('EXPO_PUBLIC_SUPABASE_ANON_KEY')
         WIFI_SSID = credentials('WIFI_SSID')
@@ -63,14 +62,9 @@ pipeline {
                 bat 'pip install -r scripts\\requirements.txt'
             }
         }
-        stage('Deploy Mobile App') {
+        stage('Run Mobile App (Dev Mode)') {
             steps {
-                bat 'npm install -g eas-cli'
-                bat 'set EXPO_TOKEN=%EXPO_TOKEN% && eas --version'
-                // Build Android APK
-                bat 'set EXPO_TOKEN=%EXPO_TOKEN% && eas build --platform android --non-interactive'
-                // Check build status (optional)
-                bat 'set EXPO_TOKEN=%EXPO_TOKEN% && eas build:list'
+                bat 'npm start'
             }
         }
         stage('Upload Firmware') {
