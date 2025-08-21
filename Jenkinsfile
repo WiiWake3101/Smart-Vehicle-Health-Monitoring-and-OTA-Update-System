@@ -62,5 +62,10 @@ pipeline {
                 bat 'npm test'
             }
         }
+        stage('Lint Code') {
+            steps {
+                bat 'npm run lint'
+            }
+        }
     }
 }

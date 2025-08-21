@@ -1,5 +1,5 @@
-import { test, expect } from '@jest/globals';
-import { supabase } from '../../lib/supabase';
+const { test, expect } = require('@jest/globals');
+const { supabase } = require('../../lib/supabase');
 
 test('hello world!', () => {
 	expect(1 + 1).toBe(2);
