@@ -1,6 +1,7 @@
 pipeline {
     agent any
     environment {
+        EXPO_TOKEN = credentials('EXPO_TOKEN')
         EXPO_PUBLIC_SUPABASE_URL = credentials('EXPO_PUBLIC_SUPABASE_URL')
         EXPO_PUBLIC_SUPABASE_ANON_KEY = credentials('EXPO_PUBLIC_SUPABASE_ANON_KEY')
         WIFI_SSID = credentials('WIFI_SSID')
@@ -65,9 +66,9 @@ pipeline {
         stage('Deploy Mobile App') {
             steps {
                 // Build Android APK
-                bat 'eas build --platform android'
+                bat 'npx eas build --platform android --non-interactive'
                 // Check build status (optional)
-                bat 'eas build:list'
+                bat 'npx eas build:list'
             }   
         }
         stage('Upload Firmware') {
