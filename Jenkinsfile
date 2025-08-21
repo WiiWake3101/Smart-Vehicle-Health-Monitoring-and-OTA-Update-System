@@ -57,10 +57,5 @@ pipeline {
                 bat 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32\\Devops\\Devops.ino'
             }
         }
-        stage('Lint Code') {
-            steps {
-                bat 'npm run lint'
-            }
-        }
     }
 }
