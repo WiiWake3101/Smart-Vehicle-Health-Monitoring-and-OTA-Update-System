@@ -65,6 +65,8 @@ pipeline {
         }
         stage('Deploy Mobile App') {
             steps {
+                bat 'eas login --token %EXPO_TOKEN%'
+                bat 'eas --version'
                 // Build Android APK
                 bat 'eas build --platform android --non-interactive'
                 // Check build status (optional)
