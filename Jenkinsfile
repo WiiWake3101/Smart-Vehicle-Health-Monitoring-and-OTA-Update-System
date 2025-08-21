@@ -62,6 +62,12 @@ pipeline {
                 bat 'pip install -r scripts\\requirements.txt'
             }
         }
+        stage('Start Android Emulator') {
+            steps {
+                bat '"C:\\Users\\vivek\\AppData\\Local\\Android\\Sdk\\emulator\\emulator.exe" -avd Medium_Phone'
+                bat 'adb wait-for-device'
+            }
+        }
         stage('Run Mobile App (Dev Mode)') {
                 steps {
                     timeout(time: 2, unit: 'MINUTES') {
