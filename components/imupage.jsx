@@ -11,17 +11,17 @@ const { width, height } = Dimensions.get("window");
 const IMUPage = ({ userId }) => {
   const navigation = useNavigation();
   const route = useRoute();
-  
+
   // Use userId from props or route params
   const userIdToUse = userId || route.params?.userId;
-  
+
   // State for IMU data from Supabase
   const [accelData, setAccelData] = useState({
     x: [0, 0, 0, 0, 0, 0],
     y: [0, 0, 0, 0, 0, 0],
     z: [0, 0, 0, 0, 0, 0]
   });
-  
+
   const [gyroData, setGyroData] = useState({
     x: [0, 0, 0, 0, 0, 0],
     y: [0, 0, 0, 0, 0, 0],
@@ -30,7 +30,7 @@ const IMUPage = ({ userId }) => {
 
   // Thresholds for alerts
   const [thresholds, setThresholds] = useState({
-    accelMag: 0.8,
+    accelMag: 16.0,
     jerk: 0.15
   });
 
@@ -49,7 +49,7 @@ const IMUPage = ({ userId }) => {
     const fetchInitialData = async () => {
       try {
         setLoading(true);
-        
+
         // Fetch the most recent 6 data points
         const { data, error } = await supabase
           .from('sensor_data')
@@ -57,20 +57,20 @@ const IMUPage = ({ userId }) => {
           .eq('user_id', userIdToUse)
           .order('time', { ascending: false })
           .limit(DATA_POINTS);
-        
+
         if (error) throw error;
-        
+
         if (data && data.length > 0) {
           // Reverse data to get chronological order (oldest to newest)
           const chronologicalData = [...data].reverse();
-          
+
           // Update state with initial data
           updateSensorData(chronologicalData);
-          
+
           // Set last updated time
           setLastUpdated(new Date(data[0].time).toLocaleTimeString());
         }
-        
+
         setLoading(false);
       } catch (err) {
         console.error('Error fetching sensor data:', err);
@@ -83,30 +83,30 @@ const IMUPage = ({ userId }) => {
       // Subscribe to changes on the sensor_data table for this user
       subscription = supabase
         .channel('sensor_data_changes')
-        .on('postgres_changes', 
-          { 
-            event: 'INSERT', 
-            schema: 'public', 
+        .on('postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
             table: 'sensor_data',
             filter: `user_id=eq.${userIdToUse}`
-          }, 
+          },
           (payload) => {
             // When new data comes in, add it to our existing data
             const newDataPoint = payload.new;
-            
+
             // Update with the new data point
             setAccelData(prev => ({
               x: [...prev.x.slice(1), newDataPoint.accel_x],
               y: [...prev.y.slice(1), newDataPoint.accel_y],
               z: [...prev.z.slice(1), newDataPoint.accel_z]
             }));
-            
+
             setGyroData(prev => ({
               x: [...prev.x.slice(1), newDataPoint.gyro_x],
               y: [...prev.y.slice(1), newDataPoint.gyro_y],
               z: [...prev.z.slice(1), newDataPoint.gyro_z]
             }));
-            
+
             // Update last updated timestamp
             setLastUpdated(new Date(newDataPoint.time).toLocaleTimeString());
           }
@@ -120,12 +120,12 @@ const IMUPage = ({ userId }) => {
       const accelX = dataArray.map(item => item.accel_x);
       const accelY = dataArray.map(item => item.accel_y);
       const accelZ = dataArray.map(item => item.accel_z);
-      
+
       // Extract gyroscope data
       const gyroX = dataArray.map(item => item.gyro_x);
       const gyroY = dataArray.map(item => item.gyro_y);
       const gyroZ = dataArray.map(item => item.gyro_z);
-      
+
       // Pad arrays if we have fewer than DATA_POINTS
       const padArray = (arr) => {
         if (arr.length < DATA_POINTS) {
@@ -133,14 +133,14 @@ const IMUPage = ({ userId }) => {
         }
         return arr;
       };
-      
+
       // Update state with padded arrays
       setAccelData({
         x: padArray(accelX),
         y: padArray(accelY),
         z: padArray(accelZ)
       });
-      
+
       setGyroData({
         x: padArray(gyroX),
         y: padArray(gyroY),
@@ -163,7 +163,7 @@ const IMUPage = ({ userId }) => {
   // Generate time labels
   const generateTimeLabels = () => {
     if (!lastUpdated) return ["", "", "", "", "", "Now"];
-    
+
     return Array(DATA_POINTS - 1).fill("").concat(["Now"]);
   };
 
@@ -221,7 +221,7 @@ const IMUPage = ({ userId }) => {
     const z = accelData.z[i];
     return Math.sqrt(x * x + y * y + z * z);
   });
-  
+
   const accelMagChartData = {
     labels: timeLabels,
     datasets: [
@@ -237,7 +237,7 @@ const IMUPage = ({ userId }) => {
         strokeDasharray: [5, 5],
       }
     ],
-    legend: ["Acceleration Magnitude", "Threshold"],
+    legend: ["Accel Mag", "Threshold"],
   };
 
   // Calculate jerk
@@ -247,11 +247,11 @@ const IMUPage = ({ userId }) => {
     const z = gyroData.z[i];
     return Math.sqrt(x * x + y * y + z * z);
   });
-  
+
   const jerkData = gyroMagnitude.map((val, i, arr) =>
     i === 0 ? 0 : Math.abs(val - arr[i - 1])
   );
-  
+
   const jerkChartData = {
     labels: timeLabels,
     datasets: [
@@ -304,9 +304,9 @@ const IMUPage = ({ userId }) => {
         start={[0, 1]}
         end={[1, 0]}
       />
-      
+
       <Text style={styles.title}>IMU Sensor Data</Text>
-      
+
       {/* Show last updated time if available */}
       {lastUpdated && (
         <View style={styles.lastUpdatedContainer}>
@@ -314,7 +314,7 @@ const IMUPage = ({ userId }) => {
           <Text style={styles.lastUpdatedText}>Last updated: {lastUpdated}</Text>
         </View>
       )}
-      
+
       <ScrollView
         style={{ width: "100%" }}
         contentContainerStyle={{ alignItems: "center", paddingTop: 24, paddingBottom: NAVBAR_HEIGHT + 20 }}
@@ -338,7 +338,7 @@ const IMUPage = ({ userId }) => {
             <View style={styles.infoCard}>
               <Text style={styles.infoTitle}>About IMU Sensors</Text>
               <Text style={styles.infoText}>
-                The Inertial Measurement Unit (IMU) combines accelerometer and gyroscope 
+                The Inertial Measurement Unit (IMU) combines accelerometer and gyroscope
                 sensors to track motion, orientation, and vibration patterns.
               </Text>
               <View style={styles.infoRow}>
@@ -354,7 +354,7 @@ const IMUPage = ({ userId }) => {
                 </View>
               </View>
             </View>
-            
+
             {/* Acceleration Card */}
             <View style={styles.card}>
               <Text style={styles.subtitle}>Accelerometer (X/Y/Z)</Text>
@@ -384,7 +384,7 @@ const IMUPage = ({ userId }) => {
                 </View>
               </View>
             </View>
-            
+
             {/* Acceleration Magnitude Card */}
             <View style={styles.card}>
               <View style={styles.cardHeader}>
@@ -396,7 +396,7 @@ const IMUPage = ({ userId }) => {
                   </View>
                 )}
               </View>
-              
+
               <LineChart
                 data={accelMagChartData}
                 width={Math.min(width * 0.8, 340)}
@@ -408,13 +408,13 @@ const IMUPage = ({ userId }) => {
                 withOuterLines={true}
                 fromZero
               />
-              
+
               <Text style={styles.cardDescription}>
-                Combined magnitude of acceleration across all axes. Peaks may indicate 
+                Combined magnitude of acceleration across all axes. Peaks may indicate
                 significant movement or impacts.
               </Text>
             </View>
-            
+
             {/* Gyroscope Card */}
             <View style={styles.card}>
               <Text style={styles.subtitle}>Gyroscope (X/Y/Z)</Text>
@@ -444,7 +444,7 @@ const IMUPage = ({ userId }) => {
                 </View>
               </View>
             </View>
-            
+
             {/* Jerk Card */}
             <View style={[styles.card, { marginBottom: 5 }]}>
               <View style={styles.cardHeader}>
@@ -456,7 +456,7 @@ const IMUPage = ({ userId }) => {
                   </View>
                 )}
               </View>
-              
+
               <LineChart
                 data={jerkChartData}
                 width={Math.min(width * 0.8, 340)}
@@ -468,16 +468,16 @@ const IMUPage = ({ userId }) => {
                 withOuterLines={true}
                 fromZero
               />
-              
+
               <Text style={styles.cardDescription}>
-                Jerk represents sudden changes in rotation rate. High values may indicate 
+                Jerk represents sudden changes in rotation rate. High values may indicate
                 abrupt direction changes or vibration events.
               </Text>
             </View>
           </>
         )}
       </ScrollView>
-      
+
       {/* Floating Navbar */}
       <View style={styles.navbar}>
         <TouchableOpacity
@@ -638,15 +638,15 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   cardHeader: {
-    flexDirection: "row",
+    flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
     width: "100%",
-    marginBottom: 16,
+    marginBottom: 8,
   },
   subtitle: {
     color: "#bfc9d1",
-    marginBottom: 16,
+    marginBottom: 8,
     fontSize: 16,
     textAlign: "center",
   },
@@ -665,7 +665,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 12,
-    marginLeft: 10,
+    marginBottom: 8,
+    alignSelf: "center",
   },
   alertText: {
     color: "#ff5555",
