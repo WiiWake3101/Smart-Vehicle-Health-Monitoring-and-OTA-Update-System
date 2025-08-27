@@ -332,6 +332,13 @@ const HomePage = () => {
     }
   };
 
+  // Handler to mark all alerts as read
+  const handleMarkAllRead = () => {
+    setAlerts(prevAlerts =>
+      prevAlerts.map(alert => ({ ...alert, read: true }))
+    );
+  };
+
   return (
     <View style={styles.container}>
       {/* Top left gradient circle */}
@@ -453,7 +460,7 @@ const HomePage = () => {
                   <MaterialIcons name="notifications" size={22} color="#4f8cff" />
                   <Text style={styles.sectionTitle}>Alerts & Notifications</Text>
                 </View>
-                <TouchableOpacity style={styles.markAllReadButton}>
+                <TouchableOpacity style={styles.markAllReadButton} onPress={handleMarkAllRead}>
                   <Text style={styles.markAllReadText}>Mark all read</Text>
                 </TouchableOpacity>
               </View>
