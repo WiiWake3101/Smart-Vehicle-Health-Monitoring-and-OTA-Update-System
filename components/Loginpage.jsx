@@ -1,21 +1,23 @@
-import React, { useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Dimensions, ActivityIndicator ,Button, Alert } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { supabase } from "../lib/supabase";
-import { useNavigation } from "@react-navigation/native";
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useNavigation } from "@react-navigation/native";
+import { LinearGradient } from "expo-linear-gradient";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, Dimensions, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { supabase } from "../lib/supabase";
 
 const { width, height } = Dimensions.get("window");
 
 const Loginpage = () => {
   const navigation = useNavigation();
-  
+
   // State for Supabase auth
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [initialCheckDone, setInitialCheckDone] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   // Check for existing session on component mount
   useEffect(() => {
@@ -26,16 +28,16 @@ const Loginpage = () => {
   const checkSession = async () => {
     try {
       setLoading(true);
-      
+
       // Get the current session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
+
       if (sessionError) {
         setInitialCheckDone(true);
         setLoading(false);
         return;
       }
-      
+
       if (session) {
         // Session exists, navigate to Home
         navigation.reset({
@@ -59,23 +61,23 @@ const Loginpage = () => {
       Alert.alert('Missing Fields', 'Please enter both email and password');
       return;
     }
-    
+
     try {
       setError('');
       setLoading(true);
-      
+
       // Sign in with email and password
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-      
+
       if (error) {
         Alert.alert('Login Error', error.message || "Incorrect email or password. Please try again.");
-        setLoading(false); 
+        setLoading(false);
         return;
       }
-      
+
       // Successful login, store session in secure storage
       if (data?.session) {
         try {
@@ -84,7 +86,7 @@ const Loginpage = () => {
             access_token: data.session.access_token,
             refresh_token: data.session.refresh_token
           }));
-          
+
           // Navigate to home screen
           const userId = data.user.id;
           navigation.reset({
@@ -147,15 +149,35 @@ const Loginpage = () => {
             keyboardType="email-address"
             editable={!loading}
           />
-          <TextInput
-            placeholder="Password"
-            placeholderTextColor="#bfc9d1"
-            secureTextEntry
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            editable={!loading}
-          />
+          <View style={{ position: "relative", width: "100%" }}>
+            <TextInput
+              placeholder="Password"
+              placeholderTextColor="#bfc9d1"
+              secureTextEntry={!showPassword}
+              style={styles.input}
+              value={password}
+              onChangeText={setPassword}
+              editable={!loading}
+            />
+            <TouchableOpacity
+              onPress={() => setShowPassword(!showPassword)}
+              style={{
+                position: "absolute",
+                right: 16,
+                top: 10,
+                height: 32,
+                justifyContent: "center",
+                alignItems: "center",
+              }}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <MaterialCommunityIcons
+                name={showPassword ? "eye-off-outline" : "eye-outline"}
+                size={24}
+                color="#4f8cff"
+              />
+            </TouchableOpacity>
+          </View>
           {error ? (
             <Text style={styles.errorText}>{error}</Text>
           ) : null}
@@ -301,7 +323,7 @@ const styles = StyleSheet.create({
     resizeMode: "contain",
   },
   signupText: {
-    marginTop: 18,
+    marginTop: 0,
     color: "#bfc9d1",
     fontSize: 15,
     textAlign: "center",
