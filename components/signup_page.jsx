@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, Linking, StyleSheet, Dimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -123,7 +124,6 @@ const signup_page = () => {
             </LinearGradient>
           </TouchableOpacity>
         </View>
-        <Text style={styles.orText}>or sign up with</Text>
         <Text style={styles.signupText}>
           Already have an account?{" "}
           <Text
@@ -246,11 +246,10 @@ const styles = StyleSheet.create({
     resizeMode: "contain",
   },
   signupText: {
-    marginTop: 18,
     color: "#bfc9d1",
     fontSize: 15,
     textAlign: "center",
   },
 });
 
-export default signup_page;
+export default signup_page;
