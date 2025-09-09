@@ -49,3 +49,4 @@ secrets.h
 infra/terraform/terraform.tfvars
 infra/terraform/.terraform.lock.hcl
 infra/terraform/.terraform/
+infra/terraform/.terraform/providers
