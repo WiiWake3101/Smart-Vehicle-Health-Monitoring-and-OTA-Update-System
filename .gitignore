@@ -46,7 +46,8 @@ app-example
 
 secrets.h
 
-infra/terraform/terraform.tfvars
-infra/terraform/.terraform.lock.hcl
-infra/terraform/.terraform/
-infra/terraform/.terraform/providers
+infra/terraform/*
+!infra/terraform/main.tf
+!infra/terraform/output.tf
+!infra/terraform/provider.tf
+!infra/terraform/variables.tf
