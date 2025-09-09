@@ -45,3 +45,5 @@ app-example
 .env.production
 
 secrets.h
+
+infra/terraform/terraform.tfvars

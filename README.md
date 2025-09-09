@@ -15,7 +15,7 @@ This system provides real-time monitoring of vehicle health metrics including:
 - **Frontend**: React Native with Expo
 - **Backend**: Supabase (PostgreSQL + Real-time API)
 - **IoT Hardware**: ESP32 with GPS, DHT22, and MPU6050 sensors
-- **DevOps**: Jenkins, Docker, Terraform, GitHub Actions
+- **DevOps**: Jenkins, Docker, Terraform
 
 ## ⚙️ Setup Instructions
 
@@ -61,43 +61,49 @@ This system provides real-time monitoring of vehicle health metrics including:
 
 This project uses Jenkins for continuous integration and deployment:
 
-1. **Automated Testing**: Unit and integration tests run on each commit
-2. **Mobile App Builds**: Automated Expo builds for iOS and Android
-3. **ESP32 Firmware Verification**: Compilation and static analysis
-4. **OTA Updates**: Automated deployment of firmware updates
+- **Automated Testing:**  
+  Jenkins runs unit and integration tests on each commit.
+- **Mobile App Builds:**  
+  Jenkins automates Expo builds for iOS and Android.
+- **ESP32 Firmware Verification:**  
+  Jenkins compiles and statically analyzes ESP32 firmware.
+- **OTA Updates:**  
+  Jenkins automates deployment of firmware updates to the S3 bucket.
+- **Secrets Management:**  
+  Jenkins securely injects Supabase and WiFi credentials into `.env` and `secrets.h` files for builds.
 
-### Jenkins Pipeline Structure
+**Jenkins Pipeline Example:**  
+See [`Jenkinsfile`](./Jenkinsfile) for the full pipeline.
 
-```groovy
-pipeline {
-    agent any
-    stages {
-        stage('Build') {
-            parallel {
-                stage('Mobile App') {
-                    steps {
-                        sh 'npm install'
-                        sh 'npm test'
-                    }
-                }
-                stage('ESP32 Firmware') {
-                    steps {
-                        sh 'arduino-cli compile --fqbn esp32:esp32:esp32 ./esp32/sensor_data_uploader'
-                    }
-                }
-            }
-        }
-        stage('Deploy') {
-            when { branch 'main' }
-            steps {
-                sh 'npx expo build:android'
-                sh 'npx expo build:ios'
-                sh './scripts/deploy_ota_update.sh'
-            }
-        }
-    }
-}
-```
+---
+
+## 🏗️ Infrastructure as Code with Terraform
+
+- **AWS S3 Bucket for Firmware:**  
+  Terraform provisions an S3 bucket (`devops-firmware-storage`) for storing ESP32 firmware files, with versioning enabled.
+- **IAM User & Policy:**  
+  Terraform creates an IAM user and policy for secure firmware upload/download access to the S3 bucket.
+- **Supabase Credentials Management:**  
+  Supabase project URL and anon key are managed as Terraform variables and outputs, making them available for CI/CD and application configuration.
+- **Best Practices:**  
+  - All infrastructure code is organized in the `infra/terraform` directory.
+  - Sensitive credentials are stored in `terraform.tfvars` (not committed to version control).
+  - AWS credentials are managed via environment variables or AWS CLI.
+
+**How to Use:**
+
+1. **Provision Infrastructure:**
+   ```sh
+   cd infra/terraform
+   terraform init
+   terraform plan
+   terraform apply
+   ```
+
+
+> **Note:**  
+> Supabase resources (tables, storage, etc.) are managed via the Supabase dashboard or CLI, as there is no official Terraform provider for Supabase.
+
 ## 🔄 DevOps Practices Implemented
 
 - **Infrastructure as Code**: Terraform for Supabase resources
@@ -117,11 +123,20 @@ EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
-### Important Notes:
-- Never commit your `.env` file to version control
-- Make sure to add `.env` to your `.gitignore` file
-- For local development, create a `.env.local` file that won't be tracked by git
-- Request actual values from the project administrator
+### Terraform Variable Configuration (`terraform.tfvars`)
+
+Sensitive information such as your Supabase project URL and anon key should be provided to Terraform using a `terraform.tfvars` file.
+
+- **Location:**  
+  Create `terraform.tfvars` inside the `infra/terraform` directory.
+- **Purpose:**  
+  This file supplies sensitive variables to your Terraform configuration without hardcoding them in your `.tf` files.
+- **Best Practices:**  
+  - Do **not** commit `terraform.tfvars` to version control.
+  - Add `terraform.tfvars` to your `.gitignore`.
+  - Request the required values from the project administrator if you do not have them.
+
+Terraform will automatically use values from `terraform.tfvars` when you run `terraform plan` or `terraform apply`.
 
 ## 🔄 OTA Firmware Upload Script
 
