@@ -47,7 +47,3 @@ app-example
 secrets.h
 
 infra/terraform/*
-!infra/terraform/main.tf
-!infra/terraform/output.tf
-!infra/terraform/provider.tf
-!infra/terraform/variables.tf
