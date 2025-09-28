@@ -7,6 +7,7 @@ WORKDIR /app
 # Copy package files and install dependencies
 COPY package.json package-lock.json ./
 RUN npm ci
+RUN npm install -g npm@11.6.1
 
 # Add environment variables for Expo
 ENV EXPO_DEVTOOLS_LISTEN_ADDRESS=0.0.0.0
