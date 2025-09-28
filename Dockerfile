@@ -11,8 +11,10 @@ RUN npm ci
 # Add environment variables for Expo
 ENV EXPO_DEVTOOLS_LISTEN_ADDRESS=0.0.0.0
 ENV CI=1
-ENV EXPO_TOKEN=3mSCNKeQlPRsUBLt2zk79JAzMoWVCNmnsgsvJSTo
+
 #uncomment and set the following line
+
+#ENV EXPO_TOKEN=add your expo token here
 #ENV REACT_NATIVE_PACKAGER_HOSTNAME=<ip address of the machine running the container>
 
 # Copy .env file
@@ -25,4 +27,4 @@ COPY . .
 EXPOSE 8081 19000 19001 19002
 
 # Start the Expo development server
-CMD ["npx", "expo", "start","-c"]
+CMD ["npx", "expo", "start"]
