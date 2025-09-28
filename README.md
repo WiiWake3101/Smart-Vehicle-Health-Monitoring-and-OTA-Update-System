@@ -33,6 +33,34 @@ This system provides real-time monitoring of vehicle health metrics including:
    npx expo start
    ```
 
+### Docker Setup
+
+1. **Build the Docker image:**
+   ```bash
+   docker build -t vehicle-monitoring-app .
+   ```
+
+2. **Set your IP address:**
+   
+   Before running the container, uncomment and set your machine's IP address in the Dockerfile:
+   ```dockerfile
+   ENV REACT_NATIVE_PACKAGER_HOSTNAME=<your-machine-ip-address>
+   ```
+
+3. **Run the Docker container:**
+   ```bash
+   docker run -it --rm \
+     -p 8081:8081 \
+     -p 19000:19000 \
+     -p 19001:19001 \
+     -p 19002:19002 \
+     vehicle-monitoring-app
+   ```
+
+4. **Connect to Expo:**
+   
+   Open the Expo Go app on your mobile device and connect directly to your machine's IP address at port 19000.
+
 ### ESP32 Hardware Setup
 
 1. **Connect the sensors:**
