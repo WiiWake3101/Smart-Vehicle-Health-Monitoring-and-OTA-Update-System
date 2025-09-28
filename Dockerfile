@@ -10,7 +10,8 @@ RUN npm ci
 
 # Add environment variables for Expo
 ENV EXPO_DEVTOOLS_LISTEN_ADDRESS=0.0.0.0
-
+ENV CI=1
+ENV EXPO_TOKEN=3mSCNKeQlPRsUBLt2zk79JAzMoWVCNmnsgsvJSTo
 #uncomment and set the following line
 #ENV REACT_NATIVE_PACKAGER_HOSTNAME=<ip address of the machine running the container>
 
