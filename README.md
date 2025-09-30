@@ -1,10 +1,10 @@
 # Smart Vehicle Health Monitoring and OTA Update System 🚗
 
-A comprehensive IoT solution for real-time vehicle monitoring with over-the-air updates using ESP32, React Native, and Supabase.
+A comprehensive IoT solution for real-time vehicle monitoring and over-the-air updates, built with ESP32, React Native, Supabase, and a modern DevOps stack.
 
 ## 🔍 Project Overview
 
-This system provides real-time monitoring of vehicle health metrics including:
+This system enables real-time monitoring of vehicle health metrics:
 - GPS location tracking with trip history
 - Temperature and humidity sensing
 - IMU (Inertial Measurement Unit) data for motion analysis
@@ -12,10 +12,10 @@ This system provides real-time monitoring of vehicle health metrics including:
 
 ## 🛠️ Technology Stack
 
-- **Frontend**: React Native with Expo
-- **Backend**: Supabase (PostgreSQL + Real-time API)
-- **IoT Hardware**: ESP32 with GPS, DHT22, and MPU6050 sensors
-- **DevOps**: Jenkins, Docker, Terraform
+- **Frontend:** React Native with Expo
+- **Backend:** Supabase (PostgreSQL + Real-time API)
+- **IoT Hardware:** ESP32 with GPS, DHT22, and MPU6050 sensors
+- **DevOps Tools:** Jenkins CI/CD, Ansible, Terraform, Docker, Grafana and Prometheus
 
 ## ⚙️ Setup Instructions
 
@@ -103,20 +103,19 @@ This project uses Jenkins for continuous integration and deployment:
 **Jenkins Pipeline Example:**  
 See [`Jenkinsfile`](./Jenkinsfile) for the full pipeline.
 
----
-
 ## 🏗️ Infrastructure as Code with Terraform
 
-- **AWS S3 Bucket for Firmware:**  
-  Terraform provisions an S3 bucket (`devops-firmware-storage`) for storing ESP32 firmware files, with versioning enabled.
-- **IAM User & Policy:**  
-  Terraform creates an IAM user and policy for secure firmware upload/download access to the S3 bucket.
-- **Supabase Credentials Management:**  
-  Supabase project URL and anon key are managed as Terraform variables and outputs, making them available for CI/CD and application configuration.
-- **Best Practices:**  
-  - All infrastructure code is organized in the `infra/terraform` directory.
-  - Sensitive credentials are stored in `terraform.tfvars` (not committed to version control).
-  - AWS credentials are managed via environment variables or AWS CLI.
+Terraform is used to automate and manage cloud infrastructure for this project.  
+It provisions AWS resources such as EC2 instances, S3 buckets for firmware storage, IAM users and policies, and security groups for monitoring tools.  
+The main Terraform configuration is in `infra/terraform/main.tf`, which defines:
+
+- The AWS region and team members as variables.
+- The latest Ubuntu AMI for EC2.
+- Security groups for SSH, HTTP, Expo, Grafana, Prometheus, Node Exporter, and other required ports.
+- An EC2 instance for testing and deployment, tagged with environment and owner information.
+- Output of the public IP address for easy access.
+
+Terraform ensures reproducibility, scalability, and best practices by keeping all infrastructure code in the `infra/terraform` directory.
 
 **How to Use:**
 
@@ -127,10 +126,6 @@ See [`Jenkinsfile`](./Jenkinsfile) for the full pipeline.
    terraform plan
    terraform apply
    ```
-
-
-> **Note:**  
-> Supabase resources (tables, storage, etc.) are managed via the Supabase dashboard or CLI, as there is no official Terraform provider for Supabase.
 
 ## 🔄 DevOps Practices Implemented
 
@@ -150,21 +145,15 @@ This application requires a properly configured `.env` file in the root director
 EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
+## 🚀 DevOps Tools Used
 
-### Terraform Variable Configuration (`terraform.tfvars`)
+This project leverages the following DevOps tools for automation, deployment, and monitoring:
 
-Sensitive information such as your Supabase project URL and anon key should be provided to Terraform using a `terraform.tfvars` file.
-
-- **Location:**  
-  Create `terraform.tfvars` inside the `infra/terraform` directory.
-- **Purpose:**  
-  This file supplies sensitive variables to your Terraform configuration without hardcoding them in your `.tf` files.
-- **Best Practices:**  
-  - Do **not** commit `terraform.tfvars` to version control.
-  - Add `terraform.tfvars` to your `.gitignore`.
-  - Request the required values from the project administrator if you do not have them.
-
-Terraform will automatically use values from `terraform.tfvars` when you run `terraform plan` or `terraform apply`.
+- **Jenkins CI/CD:** Automated testing, mobile app builds, firmware verification, OTA updates, and secrets management.
+- **Ansible:** Automated configuration management and deployment of application and monitoring stack.
+- **Terraform:** Infrastructure as Code for provisioning AWS resources, IAM policies, and S3 buckets.
+- **Docker:** Containerization for consistent development, testing, and deployment of services.
+- **Grafana:** Monitoring and visualization of system and hardware metrics.
 
 ## 🔄 OTA Firmware Upload Script
 
@@ -206,9 +195,6 @@ python scripts/upload_firmware.py delete --all
 ## Getting Started
 
 1. Clone the repository
-2. Create the `.env` file as described above
-3. Install dependencies with `npm install`
-4. Start the development server with `npx expo start`
 2. Create the `.env` file as described above
 3. Install dependencies with `npm install`
 4. Start the development server with `npx expo start`

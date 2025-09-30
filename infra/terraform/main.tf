@@ -56,6 +56,30 @@ resource "aws_security_group" "instance_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Grafana UI
+  ingress {
+    from_port   = 3000
+    to_port     = 3000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Prometheus
+  ingress {
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+    # Node Exporter
+  ingress {
+    from_port   = 9100
+    to_port     = 9100
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   # Expo DevTools UI
   ingress {
     from_port   = 19002
@@ -87,7 +111,7 @@ resource "aws_security_group" "instance_sg" {
 # Create a single EC2 instance for testing
 resource "aws_instance" "test_instance" {
   ami             = data.aws_ami.ubuntu.id
-  instance_type   = "t3.micro"
+  instance_type   = "m7i-flex.large"
   security_groups = [aws_security_group.instance_sg.name]
   key_name        = "Wiiwake3101"  # SSH key for instance access
 
