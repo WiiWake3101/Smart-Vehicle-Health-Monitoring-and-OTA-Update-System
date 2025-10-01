@@ -1,5 +1,10 @@
 pipeline {
     agent any
+    
+    parameters {
+        booleanParam(defaultValue: false, description: 'Upload firmware to Supabase?', name: 'UPLOAD_FIRMWARE')
+    }
+    
     environment {
         EXPO_PUBLIC_SUPABASE_URL = credentials('EXPO_PUBLIC_SUPABASE_URL')
         EXPO_PUBLIC_SUPABASE_ANON_KEY = credentials('EXPO_PUBLIC_SUPABASE_ANON_KEY')
@@ -144,10 +149,19 @@ pipeline {
                         set DEFAULT_BIN_PATH="%CD%\\..\\Devops\\esp32\\build\\esp32.esp32.esp32wrover"
                         echo Testing firmware detection in the expected location
                         python upload_firmware.py binaries
-                        
-                        REM Uncomment the line below to enable actual firmware uploads
-                        REM python upload_firmware.py
                         '''
+                        
+                        // Conditionally upload firmware if the parameter is set
+                        if (params.UPLOAD_FIRMWARE) {
+                            echo "FIRMWARE UPLOAD ENABLED - Uploading firmware to Supabase..."
+                            bat '''
+                            set ENV_FILE_PATH=../.env
+                            set DEFAULT_BIN_PATH="%CD%\\..\\Devops\\esp32\\build\\esp32.esp32.esp32wrover"
+                            python upload_firmware.py
+                            '''
+                        } else {
+                            echo "Firmware upload skipped (set UPLOAD_FIRMWARE parameter to enable)"
+                        }
                     }
                 }
             }
