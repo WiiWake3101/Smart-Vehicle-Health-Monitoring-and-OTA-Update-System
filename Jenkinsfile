@@ -137,11 +137,12 @@ pipeline {
                     // Verify the copy was successful
                     bat 'if exist Devops\\esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin echo Firmware verified in the expected location'
                     
-                    // Now run the script in "auto" mode to detect and potentially upload the firmware
-                    // This is commented out by default - uncomment to enable actual uploads
+                    // Run the script in "binaries" mode to detect the firmware
                     dir('scripts') {
                         bat '''
-                        echo Testing auto-detection of firmware (read-only, no upload)
+                        set ENV_FILE_PATH=../.env
+                        set DEFAULT_BIN_PATH="%CD%\\..\\Devops\\esp32\\build\\esp32.esp32.esp32wrover"
+                        echo Testing firmware detection in the expected location
                         python upload_firmware.py binaries
                         
                         REM Uncomment the line below to enable actual firmware uploads
