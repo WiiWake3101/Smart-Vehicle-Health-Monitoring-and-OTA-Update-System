@@ -112,6 +112,46 @@ pipeline {
                 }
             }
         }
+        stage('Check Real Firmware') {
+            steps {
+                script {
+                    // Check if the real firmware exists in the expected location
+                    bat '''
+                        echo "=== Checking for real firmware ==="
+                        if exist esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin (
+                            echo Real firmware found at esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin
+                        ) else (
+                            echo Real firmware NOT found
+                        )
+                    '''
+                    
+                    // Create a directory that matches the expected path in the script
+                    bat '''
+                        if not exist Devops\\esp32\\build\\esp32.esp32.esp32wrover mkdir Devops\\esp32\\build\\esp32.esp32.esp32wrover
+                        if exist esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin (
+                            copy esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin Devops\\esp32\\build\\esp32.esp32.esp32wrover\\
+                            echo Firmware copied to expected location for script
+                        )
+                    '''
+                    
+                    // Verify the copy was successful
+                    bat 'if exist Devops\\esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin echo Firmware verified in the expected location'
+                    
+                    // Now run the script in "auto" mode to detect and potentially upload the firmware
+                    // This is commented out by default - uncomment to enable actual uploads
+                    dir('scripts') {
+                        bat '''
+                        echo Testing auto-detection of firmware (read-only, no upload)
+                        python upload_firmware.py binaries
+                        
+                        REM Uncomment the line below to enable actual firmware uploads
+                        REM python upload_firmware.py
+                        '''
+                    }
+                }
+            }
+        }
+        
         stage('App Test') {
             steps {
                 bat 'npm test'
