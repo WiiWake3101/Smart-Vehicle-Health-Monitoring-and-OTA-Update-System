@@ -63,27 +63,24 @@ pipeline {
                     // Echo current workspace for debugging
                     bat 'echo Current directory: %CD%'
                     
-                    // Create binary directory structure with absolute path
+                    // Create a simplified directory path for binaries without spaces
                     bat '''
-                        if not exist %WORKSPACE%\\Devops\\esp32\\build\\esp32.esp32.esp32wrover (
-                            mkdir %WORKSPACE%\\Devops\\esp32\\build\\esp32.esp32.esp32wrover
-                        )
+                        mkdir bin_dir
+                        copy esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin bin_dir\\
                     '''
                     
-                    // Copy the compiled binary to where the script expects it
-                    bat 'copy esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin %WORKSPACE%\\Devops\\esp32\\build\\esp32.esp32.esp32wrover\\'
-                    
                     // Verify the file was copied
-                    bat 'dir %WORKSPACE%\\Devops\\esp32\\build\\esp32.esp32.esp32wrover'
+                    bat 'dir bin_dir'
                     
-                    // Set working directory for the script and override default binary path
+                    // Set working directory for the script and use the simplified bin path
                     dir('scripts') {
-                        withEnv(["DEFAULT_BIN_PATH=${WORKSPACE}\\Devops\\esp32\\build\\esp32.esp32.esp32wrover"]) {
-                            // Test listing firmware versions with explicit paths
+                        // Use simplified path in environment variable
+                        withEnv(["DEFAULT_BIN_PATH=${WORKSPACE}/bin_dir"]) {
+                            // Test listing firmware versions
                             bat 'python upload_firmware.py list || exit /b'
                             
-                            // Use absolute path for binaries command
-                            bat 'set DEFAULT_BIN_PATH=%WORKSPACE%\\Devops\\esp32\\build\\esp32.esp32.esp32wrover && python upload_firmware.py binaries || exit /b'
+                            // Test listing binaries with environment variable
+                            bat 'set DEFAULT_BIN_PATH=%WORKSPACE%\\bin_dir && python upload_firmware.py binaries || exit /b'
                             
                             echo "Firmware upload script tests passed!"
                         }
