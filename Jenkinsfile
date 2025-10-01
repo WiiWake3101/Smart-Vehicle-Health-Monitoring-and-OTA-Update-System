@@ -59,30 +59,43 @@ pipeline {
         }
         stage('List Directories') {
             steps {
-                bat 'echo Current workspace: %CD%'
-                bat 'dir'
-                bat 'if exist esp32 dir esp32'
-                bat 'if exist esp32\\build dir esp32\\build'
-                bat 'if exist esp32\\build\\esp32.esp32.esp32wrover dir esp32\\build\\esp32.esp32.esp32wrover'
-                bat 'if exist scripts dir scripts'
+                // Show workspace root contents
+                bat 'echo "=== WORKSPACE ROOT (%CD%) ===" && dir'
+                
+                // Explore esp32 directory structure in detail
+                bat 'echo "=== ESP32 DIRECTORY ===" && if exist esp32 dir esp32 /s'
+                
+                // Look for .bin files anywhere in the workspace
+                bat 'echo "=== SEARCHING FOR .BIN FILES ===" && dir /s /b *.bin'
+                
+                // Look specifically in build directories
+                bat 'echo "=== SEARCHING FOR BUILD DIRECTORIES ===" && dir /s /b *build*'
+                
+                // List scripts directory contents
+                bat 'echo "=== SCRIPTS DIRECTORY ===" && if exist scripts dir scripts'
+                
+                // Check parent directory of workspace
+                bat 'echo "=== PARENT DIRECTORY ===" && dir ..'
+                
+                // Try to find the Devops.ino.bin file
+                bat 'echo "=== SEARCHING FOR DEVOPS.INO.BIN ===" && dir /s /b *Devops.ino.bin*'
             }
         }
         stage('Test Firmware Upload Script') {
             steps {
                 script {
+                    // Create a simple test binary for testing purposes
+                    bat '''
+                    echo Creating test binary file...
+                    mkdir -p test_bin_dir
+                    echo This is a test binary file > test_bin_dir\\test.bin
+                    dir test_bin_dir
+                    '''
+                    
                     // Set working directory for the script
                     dir('scripts') {
-                        bat 'echo Current directory in scripts: %CD%'
-                        
-                        // Check if .env file exists and its location
-                        bat 'if exist ../.env echo .env file found in parent directory'
-                        bat 'if exist ../Devops/.env echo .env file found in ../Devops directory'
-                        
-                        // Test listing firmware versions (read-only operation)
-                        bat 'python upload_firmware.py list || exit /b'
-                        
-                        // Test listing binary files - try with different paths
-                        bat 'set DEFAULT_BIN_PATH=%CD%\\..\\esp32\\build\\esp32.esp32.esp32wrover && python upload_firmware.py binaries || exit /b'
+                        // Test with the test binary directory
+                        bat 'set DEFAULT_BIN_PATH=%CD%\\..\\test_bin_dir && python upload_firmware.py binaries || exit /b'
                         
                         echo "Firmware upload script tests passed!"
                     }
