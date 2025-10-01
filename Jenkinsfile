@@ -57,6 +57,22 @@ pipeline {
                 bat 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32\\Devops\\Devops.ino'
             }
         }
+        stage('Test Firmware Upload Script') {
+            steps {
+                script {
+                    // Set working directory for the script
+                    dir('scripts') {
+                        // Test listing firmware versions (read-only operation)
+                        bat 'python upload_firmware.py list || exit /b'
+                        
+                        // Test listing binary files
+                        bat 'python upload_firmware.py binaries || exit /b'
+                        
+                        echo "Firmware upload script tests passed!"
+                    }
+                }
+            }
+        }
         stage('App Test') {
             steps {
                 bat 'npm test'
