@@ -3,6 +3,9 @@ pipeline {
     
     parameters {
         booleanParam(defaultValue: false, description: 'Upload firmware to Supabase?', name: 'UPLOAD_FIRMWARE')
+        string(defaultValue: '1.0.1', description: 'Firmware version (e.g., 1.0.1)', name: 'FIRMWARE_VERSION')
+        string(defaultValue: 'GPS-Tracker', description: 'Device type', name: 'DEVICE_TYPE')
+        booleanParam(defaultValue: false, description: 'Mark firmware as mandatory update?', name: 'IS_MANDATORY')
     }
     
     environment {
@@ -62,105 +65,39 @@ pipeline {
                 bat 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32\\Devops\\Devops.ino'
             }
         }
-        stage('List Directories') {
-            steps {
-                // Show workspace root contents
-                bat 'echo "=== WORKSPACE ROOT (%CD%) ===" && dir'
-                
-                // Explore esp32 directory structure in detail
-                bat 'echo "=== ESP32 DIRECTORY ===" && if exist esp32 dir esp32 /s'
-                
-                // Look for .bin files anywhere in the workspace
-                bat 'echo "=== SEARCHING FOR .BIN FILES ===" && dir /s /b *.bin'
-                
-                // Look specifically in build directories
-                bat 'echo "=== SEARCHING FOR BUILD DIRECTORIES ===" && dir /s /b *build*'
-                
-                // List scripts directory contents
-                bat 'echo "=== SCRIPTS DIRECTORY ===" && if exist scripts dir scripts'
-                
-                // Check parent directory of workspace
-                bat 'echo "=== PARENT DIRECTORY ===" && dir ..'
-                
-                // Try to find the Devops.ino.bin file
-                bat 'echo "=== SEARCHING FOR DEVOPS.INO.BIN ===" && dir /s /b *Devops.ino.bin*'
-            }
-        }
-        stage('Test Firmware Upload Script') {
+        stage('Check and Upload Firmware') {
             steps {
                 script {
-                    // Create a simple test binary for testing purposes - Windows compatible version
-                    bat '''
-                    echo Creating test binary file...
-                    if not exist test_bin_dir mkdir test_bin_dir
-                    echo This is a test binary file > test_bin_dir\\test.bin
-                    dir test_bin_dir
-                    '''
+                    // Verify firmware exists
+                    bat 'if exist esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin echo ✅ Firmware compiled successfully'
                     
-                    // Modify script to accept relative path for testing
-                    dir('scripts') {
-                        // Create a simple ENV override for testing
-                        bat '''
-                        echo EXPO_PUBLIC_SUPABASE_URL=%EXPO_PUBLIC_SUPABASE_URL% > test.env
-                        echo EXPO_PUBLIC_SUPABASE_ANON_KEY=%EXPO_PUBLIC_SUPABASE_ANON_KEY% >> test.env
-                        '''
-                        
-                        // Test with proper double-quoted path to handle spaces
-                        bat '''
-                        set ENV_FILE_PATH=../.env
-                        set DEFAULT_BIN_PATH="%CD%\\..\\test_bin_dir"
-                        python upload_firmware.py binaries || exit /b
-                        '''
-                        
-                        echo "Firmware upload script tests passed!"
-                    }
-                }
-            }
-        }
-        stage('Check Real Firmware') {
-            steps {
-                script {
-                    // Check if the real firmware exists in the expected location
-                    bat '''
-                        echo "=== Checking for real firmware ==="
-                        if exist esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin (
-                            echo Real firmware found at esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin
-                        ) else (
-                            echo Real firmware NOT found
-                        )
-                    '''
-                    
-                    // Create a directory that matches the expected path in the script
+                    // Copy firmware to expected location for script
                     bat '''
                         if not exist Devops\\esp32\\build\\esp32.esp32.esp32wrover mkdir Devops\\esp32\\build\\esp32.esp32.esp32wrover
-                        if exist esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin (
-                            copy esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin Devops\\esp32\\build\\esp32.esp32.esp32wrover\\
-                            echo Firmware copied to expected location for script
-                        )
+                        copy esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin Devops\\esp32\\build\\esp32.esp32.esp32wrover\\
                     '''
                     
-                    // Verify the copy was successful
-                    bat 'if exist Devops\\esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin echo Firmware verified in the expected location'
-                    
-                    // Run the script in "binaries" mode to detect the firmware
+                    // Run firmware upload script
                     dir('scripts') {
+                        // Test firmware detection
                         bat '''
                         set ENV_FILE_PATH=../.env
-                        set DEFAULT_BIN_PATH="%CD%\\..\\Devops\\esp32\\build\\esp32.esp32.esp32wrover"
-                        echo Testing firmware detection in the expected location
+                        echo 📋 Checking compiled firmware...
                         python upload_firmware.py binaries
                         '''
                         
-                        // Conditionally upload firmware if the parameter is set
+                        // Conditionally upload firmware if parameter is set
                         if (params.UPLOAD_FIRMWARE) {
-                            echo "FIRMWARE UPLOAD ENABLED - Uploading firmware to Supabase..."
-                            bat '''
+                            echo "🚀 FIRMWARE UPLOAD ENABLED - Uploading to Supabase..."
+                            
+                            bat """
                             set ENV_FILE_PATH=../.env
-                            set DEFAULT_BIN_PATH="%CD%\\..\\Devops\\esp32\\build\\esp32.esp32.esp32wrover"
-                            python upload_firmware.py
-                            '''
+                            python upload_firmware.py upload "../Devops/esp32/build/esp32.esp32.esp32wrover/Devops.ino.bin" ${params.FIRMWARE_VERSION} ${params.DEVICE_TYPE} ${params.IS_MANDATORY}
+                            """
+                            
+                            echo "✅ Firmware uploaded! Version: ${params.FIRMWARE_VERSION}, Device: ${params.DEVICE_TYPE}"
                         } else {
-                            echo "Firmware upload skipped (set UPLOAD_FIRMWARE parameter to enable)"
+                            echo "ℹ️ Firmware upload skipped (set UPLOAD_FIRMWARE parameter to enable)"
                         }
                     }
                 }
