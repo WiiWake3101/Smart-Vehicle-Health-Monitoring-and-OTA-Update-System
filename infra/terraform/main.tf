@@ -2,7 +2,7 @@
 variable "team_members" {
   description = "Names of team members"
   type        = list(string)
-  default     = ["Vivek M G (vm4512)", "Himasri ()", "Vignesh V (vv6644)"]
+  default     = ["Vivek M G (vm4512)", "Himasri (vj6522)", "Vignesh V (vv6644)"]
 }
 
 # Find the latest Ubuntu AMI

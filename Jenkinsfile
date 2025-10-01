@@ -1,5 +1,14 @@
 pipeline {
     agent any
+    
+    parameters {
+        booleanParam(defaultValue: false, description: 'Upload firmware to Supabase?', name: 'UPLOAD_FIRMWARE')
+        string(defaultValue: '1.0.1', description: 'Firmware version (e.g., 1.0.1)', name: 'FIRMWARE_VERSION')
+        string(defaultValue: 'GPS-Tracker', description: 'Device type', name: 'DEVICE_TYPE')
+        booleanParam(defaultValue: false, description: 'Mark firmware as mandatory update?', name: 'IS_MANDATORY')
+        booleanParam(defaultValue: false, description: 'Force upload even if version exists?', name: 'FORCE_UPLOAD')
+    }
+    
     environment {
         EXPO_PUBLIC_SUPABASE_URL = credentials('EXPO_PUBLIC_SUPABASE_URL')
         EXPO_PUBLIC_SUPABASE_ANON_KEY = credentials('EXPO_PUBLIC_SUPABASE_ANON_KEY')
@@ -57,6 +66,48 @@ pipeline {
                 bat 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32\\Devops\\Devops.ino'
             }
         }
+        stage('Check and Upload Firmware') {
+            steps {
+                script {
+                    // Verify firmware exists
+                    bat 'if exist esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin echo ✅ Firmware compiled successfully'
+                    
+                    // Copy firmware to expected location for script
+                    bat '''
+                        if not exist Devops\\esp32\\build\\esp32.esp32.esp32wrover mkdir Devops\\esp32\\build\\esp32.esp32.esp32wrover
+                        copy esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin Devops\\esp32\\build\\esp32.esp32.esp32wrover\\
+                    '''
+                    
+                    // Run firmware upload script
+                    dir('scripts') {
+                        // Test firmware detection
+                        bat '''
+                        set ENV_FILE_PATH=../.env
+                        echo 📋 Checking compiled firmware...
+                        python upload_firmware.py binaries
+                        '''
+                        
+                        // Conditionally upload firmware if parameter is set
+                        if (params.UPLOAD_FIRMWARE) {
+                            echo "🚀 FIRMWARE UPLOAD ENABLED - Uploading to Supabase..."
+                            
+                            // Include --force flag if FORCE_UPLOAD is true
+                            def forceFlag = params.FORCE_UPLOAD ? "--force" : ""
+                            
+                            bat """
+                            set ENV_FILE_PATH=../.env
+                            python upload_firmware.py upload "../Devops/esp32/build/esp32.esp32.esp32wrover/Devops.ino.bin" ${params.FIRMWARE_VERSION} ${params.DEVICE_TYPE} ${params.IS_MANDATORY} ${forceFlag}
+                            """
+                            
+                            echo "✅ Firmware uploaded! Version: ${params.FIRMWARE_VERSION}, Device: ${params.DEVICE_TYPE}"
+                        } else {
+                            echo "ℹ️ Firmware upload skipped (set UPLOAD_FIRMWARE parameter to enable)"
+                        }
+                    }
+                }
+            }
+        }
+        
         stage('App Test') {
             steps {
                 bat 'npm test'
