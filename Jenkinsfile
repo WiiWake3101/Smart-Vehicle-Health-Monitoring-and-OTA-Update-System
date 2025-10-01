@@ -60,30 +60,34 @@ pipeline {
         stage('Test Firmware Upload Script') {
             steps {
                 script {
-                    // Echo current workspace for debugging
-                    bat 'echo Current directory: %CD%'
+                    // Create simplified directory and copy binary - one command per line for reliability
+                    bat 'echo Current workspace: %WORKSPACE%'
+                    bat 'if exist bin_dir rmdir /s /q bin_dir'
+                    bat 'mkdir bin_dir'
                     
-                    // Create a simplified directory path for binaries without spaces
-                    bat '''
-                        mkdir bin_dir
-                        copy esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin bin_dir\\
-                    '''
+                    // Try different approaches to copy the file
+                    bat 'echo Trying to copy binary file...'
+                    bat 'if exist "esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin" echo Binary file exists'
+                    bat 'dir "esp32\\build\\esp32.esp32.esp32wrover\\"'
                     
-                    // Verify the file was copied
+                    // Try with quoted paths
+                    bat 'copy "esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin" "bin_dir\\"'
+                    
+                    // Verify contents
                     bat 'dir bin_dir'
                     
-                    // Set working directory for the script and use the simplified bin path
+                    // Test the upload_firmware.py script with simpler paths
                     dir('scripts') {
-                        // Use simplified path in environment variable
-                        withEnv(["DEFAULT_BIN_PATH=${WORKSPACE}/bin_dir"]) {
-                            // Test listing firmware versions
-                            bat 'python upload_firmware.py list || exit /b'
-                            
-                            // Test listing binaries with environment variable
-                            bat 'set DEFAULT_BIN_PATH=%WORKSPACE%\\bin_dir && python upload_firmware.py binaries || exit /b'
-                            
-                            echo "Firmware upload script tests passed!"
-                        }
+                        // Test list command (read-only)
+                        bat 'python upload_firmware.py list'
+                        
+                        // Set environment variable with correct path to binary dir and test binaries command
+                        bat '''
+                        set DEFAULT_BIN_PATH=%WORKSPACE%\\bin_dir
+                        python upload_firmware.py binaries
+                        '''
+                        
+                        echo "Firmware upload script tests completed"
                     }
                 }
             }
