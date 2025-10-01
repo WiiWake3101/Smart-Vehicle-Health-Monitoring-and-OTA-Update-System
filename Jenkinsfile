@@ -57,37 +57,34 @@ pipeline {
                 bat 'arduino-cli compile --fqbn esp32:esp32:esp32 esp32\\Devops\\Devops.ino'
             }
         }
+        stage('List Directories') {
+            steps {
+                bat 'echo Current workspace: %CD%'
+                bat 'dir'
+                bat 'if exist esp32 dir esp32'
+                bat 'if exist esp32\\build dir esp32\\build'
+                bat 'if exist esp32\\build\\esp32.esp32.esp32wrover dir esp32\\build\\esp32.esp32.esp32wrover'
+                bat 'if exist scripts dir scripts'
+            }
+        }
         stage('Test Firmware Upload Script') {
             steps {
                 script {
-                    // Create simplified directory and copy binary - one command per line for reliability
-                    bat 'echo Current workspace: %WORKSPACE%'
-                    bat 'if exist bin_dir rmdir /s /q bin_dir'
-                    bat 'mkdir bin_dir'
-                    
-                    // Try different approaches to copy the file
-                    bat 'echo Trying to copy binary file...'
-                    bat 'if exist "esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin" echo Binary file exists'
-                    bat 'dir "esp32\\build\\esp32.esp32.esp32wrover\\"'
-                    
-                    // Try with quoted paths
-                    bat 'copy "esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin" "bin_dir\\"'
-                    
-                    // Verify contents
-                    bat 'dir bin_dir'
-                    
-                    // Test the upload_firmware.py script with simpler paths
+                    // Set working directory for the script
                     dir('scripts') {
-                        // Test list command (read-only)
-                        bat 'python upload_firmware.py list'
+                        bat 'echo Current directory in scripts: %CD%'
                         
-                        // Set environment variable with correct path to binary dir and test binaries command
-                        bat '''
-                        set DEFAULT_BIN_PATH=%WORKSPACE%\\bin_dir
-                        python upload_firmware.py binaries
-                        '''
+                        // Check if .env file exists and its location
+                        bat 'if exist ../.env echo .env file found in parent directory'
+                        bat 'if exist ../Devops/.env echo .env file found in ../Devops directory'
                         
-                        echo "Firmware upload script tests completed"
+                        // Test listing firmware versions (read-only operation)
+                        bat 'python upload_firmware.py list || exit /b'
+                        
+                        // Test listing binary files - try with different paths
+                        bat 'set DEFAULT_BIN_PATH=%CD%\\..\\esp32\\build\\esp32.esp32.esp32wrover && python upload_firmware.py binaries || exit /b'
+                        
+                        echo "Firmware upload script tests passed!"
                     }
                 }
             }
