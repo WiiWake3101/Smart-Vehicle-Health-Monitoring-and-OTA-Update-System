@@ -60,12 +60,18 @@ pipeline {
         stage('Test Firmware Upload Script') {
             steps {
                 script {
+                    // Create binary directory structure if it doesn't exist
+                    bat 'if not exist Devops\\esp32\\build\\esp32.esp32.esp32wrover mkdir Devops\\esp32\\build\\esp32.esp32.esp32wrover'
+                    
+                    // Copy the compiled binary to where the script expects it
+                    bat 'copy esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin Devops\\esp32\\build\\esp32.esp32.esp32wrover\\'
+                    
                     // Set working directory for the script
                     dir('scripts') {
                         // Test listing firmware versions (read-only operation)
                         bat 'python upload_firmware.py list || exit /b'
                         
-                        // Test listing binary files
+                        // Test listing binary files - should now find the copied binary
                         bat 'python upload_firmware.py binaries || exit /b'
                         
                         echo "Firmware upload script tests passed!"
