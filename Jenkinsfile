@@ -6,6 +6,7 @@ pipeline {
         string(defaultValue: '1.0.1', description: 'Firmware version (e.g., 1.0.1)', name: 'FIRMWARE_VERSION')
         string(defaultValue: 'GPS-Tracker', description: 'Device type', name: 'DEVICE_TYPE')
         booleanParam(defaultValue: false, description: 'Mark firmware as mandatory update?', name: 'IS_MANDATORY')
+        booleanParam(defaultValue: false, description: 'Force upload even if version exists?', name: 'FORCE_UPLOAD')
     }
     
     environment {
@@ -90,9 +91,12 @@ pipeline {
                         if (params.UPLOAD_FIRMWARE) {
                             echo "🚀 FIRMWARE UPLOAD ENABLED - Uploading to Supabase..."
                             
+                            // Include --force flag if FORCE_UPLOAD is true
+                            def forceFlag = params.FORCE_UPLOAD ? "--force" : ""
+                            
                             bat """
                             set ENV_FILE_PATH=../.env
-                            python upload_firmware.py upload "../Devops/esp32/build/esp32.esp32.esp32wrover/Devops.ino.bin" ${params.FIRMWARE_VERSION} ${params.DEVICE_TYPE} ${params.IS_MANDATORY}
+                            python upload_firmware.py upload "../Devops/esp32/build/esp32.esp32.esp32wrover/Devops.ino.bin" ${params.FIRMWARE_VERSION} ${params.DEVICE_TYPE} ${params.IS_MANDATORY} ${forceFlag}
                             """
                             
                             echo "✅ Firmware uploaded! Version: ${params.FIRMWARE_VERSION}, Device: ${params.DEVICE_TYPE}"
