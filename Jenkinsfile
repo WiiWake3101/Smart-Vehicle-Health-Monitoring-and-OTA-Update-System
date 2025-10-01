@@ -84,18 +84,28 @@ pipeline {
         stage('Test Firmware Upload Script') {
             steps {
                 script {
-                    // Create a simple test binary for testing purposes
+                    // Create a simple test binary for testing purposes - Windows compatible version
                     bat '''
                     echo Creating test binary file...
-                    mkdir -p test_bin_dir
+                    if not exist test_bin_dir mkdir test_bin_dir
                     echo This is a test binary file > test_bin_dir\\test.bin
                     dir test_bin_dir
                     '''
                     
-                    // Set working directory for the script
+                    // Modify script to accept relative path for testing
                     dir('scripts') {
-                        // Test with the test binary directory
-                        bat 'set DEFAULT_BIN_PATH=%CD%\\..\\test_bin_dir && python upload_firmware.py binaries || exit /b'
+                        // Create a simple ENV override for testing
+                        bat '''
+                        echo EXPO_PUBLIC_SUPABASE_URL=%EXPO_PUBLIC_SUPABASE_URL% > test.env
+                        echo EXPO_PUBLIC_SUPABASE_ANON_KEY=%EXPO_PUBLIC_SUPABASE_ANON_KEY% >> test.env
+                        '''
+                        
+                        // Test with proper double-quoted path to handle spaces
+                        bat '''
+                        set ENV_FILE_PATH=../.env
+                        set DEFAULT_BIN_PATH="%CD%\\..\\test_bin_dir"
+                        python upload_firmware.py binaries || exit /b
+                        '''
                         
                         echo "Firmware upload script tests passed!"
                     }

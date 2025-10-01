@@ -6,8 +6,12 @@ from datetime import datetime
 
 # Default path for binary files - allow override via environment variable
 DEFAULT_BIN_PATH = os.environ.get("DEFAULT_BIN_PATH", r".\Devops\esp32\build\esp32.esp32.esp32wrover")
-# Path to .env file
-ENV_FILE_PATH = r".\Devops\.env"
+# Strip quotes if present
+if DEFAULT_BIN_PATH and DEFAULT_BIN_PATH.startswith('"') and DEFAULT_BIN_PATH.endswith('"'):
+    DEFAULT_BIN_PATH = DEFAULT_BIN_PATH[1:-1]
+    
+# Path to .env file - also allow override
+ENV_FILE_PATH = os.environ.get("ENV_FILE_PATH", r".\Devops\.env")
 
 def load_env_file(env_path):
     """Load environment variables from a .env file"""
@@ -182,12 +186,15 @@ def list_binary_files():
         print(f"Default binary directory does not exist: {DEFAULT_BIN_PATH}")
         return []
     
-    bin_files = []
-    for file in os.listdir(DEFAULT_BIN_PATH):
-        if file.endswith('.bin'):
-            bin_files.append(file)
-    
-    return bin_files
+    try:
+        bin_files = []
+        for file in os.listdir(DEFAULT_BIN_PATH):
+            if file.endswith('.bin'):
+                bin_files.append(file)
+        return bin_files
+    except Exception as e:
+        print(f"Error listing binary files: {str(e)}")
+        return []
 
 def auto_detect_and_upload():
     """Automatically detect and upload Devops.ino.bin as GPS-Tracker with incremented version from database"""
