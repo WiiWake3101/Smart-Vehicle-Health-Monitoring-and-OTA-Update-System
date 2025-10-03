@@ -10,27 +10,29 @@ pipeline {
     }
 
     environment {
-        EXPO_PUBLIC_SUPABASE_URL   = credentials('EXPO_PUBLIC_SUPABASE_URL')
+        EXPO_PUBLIC_SUPABASE_URL      = credentials('EXPO_PUBLIC_SUPABASE_URL')
         EXPO_PUBLIC_SUPABASE_ANON_KEY = credentials('EXPO_PUBLIC_SUPABASE_ANON_KEY')
-        WIFI_SSID                  = credentials('WIFI_SSID')
-        WIFI_PASSWORD              = credentials('WIFI_PASSWORD')
-        SUPABASE_URL               = credentials('SUPABASE_URL')
-        SUPABASE_API_KEY           = credentials('SUPABASE_API_KEY')
-        USER_ID                    = credentials('USER_ID')
-        HOME                       = 'C:\\Users\\vivek'
-        USERPROFILE                = 'C:\\Users\\vivek'
-        ARDUINO_CLI                = 'arduino-cli'
-        PYTHON                     = 'C:\\Users\\vivek\\AppData\\Local\\Programs\\Python\\Python313\\python.exe'
-        BUILD_PATH                 = 'esp32\\build\\esp32.esp32.esp32wrover'
-        FIRMWARE_BIN               = 'Devops.ino.bin'
-        FIRMWARE_SRC               = 'esp32\\Devops_1_0_0.ino'
-        FIRMWARE_DST               = 'esp32\\Devops\\Devops.ino'
-        SECRETS_HDR                = 'esp32\\secrets.h'
+        WIFI_SSID                     = credentials('WIFI_SSID')
+        WIFI_PASSWORD                 = credentials('WIFI_PASSWORD')
+        SUPABASE_URL                  = credentials('SUPABASE_URL')
+        SUPABASE_API_KEY              = credentials('SUPABASE_API_KEY')
+        USER_ID                       = credentials('USER_ID')
+        HOME                          = 'C:\\Users\\vivek'
+        USERPROFILE                   = 'C:\\Users\\vivek'
+        ARDUINO_CLI                   = 'arduino-cli'
+        PYTHON                        = 'python'
+        BUILD_PATH                    = 'esp32\\build\\esp32.esp32.esp32wrover'
+        FIRMWARE_BIN                  = 'Devops.ino.bin'
+        FIRMWARE_SRC                  = 'esp32\\Devops_1_0_0.ino'
+        FIRMWARE_DST                  = 'esp32\\Devops\\Devops.ino'
+        SECRETS_HDR                   = 'esp32\\secrets.h'
     }
 
     stages {
         stage('Checkout') {
-            steps { checkout scm }
+            steps {
+                checkout scm
+            }
         }
 
         stage('Generate Environment Files') {
@@ -50,7 +52,9 @@ pipeline {
         stage('Install Node & Arduino Dependencies') {
             parallel {
                 stage('Node Dependencies') {
-                    steps { bat 'npm install' }
+                    steps {
+                        bat 'npm install'
+                    }
                 }
                 stage('Arduino Libraries') {
                     steps {
@@ -76,37 +80,37 @@ pipeline {
             }
         }
 
-        stage('Check & Upload Firmware') {
+        stage('Check and Upload Firmware') {
             steps {
                 script {
-                    def firmwarePath = "${env.BUILD_PATH}\\${env.FIRMWARE_BIN}"
-                    def destPath = "Devops\\${env.BUILD_PATH}\\${env.FIRMWARE_BIN}"
-                    def forceFlag = params.FORCE_UPLOAD ? "--force" : ""
-                    if (fileExists(firmwarePath)) {
-                        echo "✅ Firmware compiled successfully"
-                        bat """
-                        if not exist Devops\\${env.BUILD_PATH} mkdir Devops\\${env.BUILD_PATH}
-                        copy ${firmwarePath} ${destPath}
-                        """
+                    dir('scripts') {
+                        bat '''
+                        set ENV_FILE_PATH=../.env
+                        echo 📋 Checking compiled firmware...
+                        C:\\Users\\vivek\\AppData\\Local\\Programs\\Python\\Python313\\python.exe upload_firmware.py binaries
+                        '''
                         if (params.UPLOAD_FIRMWARE) {
                             echo "🚀 FIRMWARE UPLOAD ENABLED - Uploading to Supabase..."
+                            def forceFlag = params.FORCE_UPLOAD ? "--force" : ""
+                            def firmwareBinPath = "${env.WORKSPACE}\\${env.BUILD_PATH}\\${env.FIRMWARE_BIN}"
                             bat """
                             set ENV_FILE_PATH=../.env
-                            ${env.PYTHON} upload_firmware.py upload "../${destPath}" ${params.FIRMWARE_VERSION} ${params.DEVICE_TYPE} ${params.IS_MANDATORY} ${forceFlag}
+                            echo Firmware binary path: %firmwareBinPath%
+                            C:\\Users\\vivek\\AppData\\Local\\Programs\\Python\\Python313\\python.exe upload_firmware.py upload "%firmwareBinPath%" ${params.FIRMWARE_VERSION} ${params.DEVICE_TYPE} ${params.IS_MANDATORY} ${forceFlag}
                             """
                             echo "✅ Firmware uploaded! Version: ${params.FIRMWARE_VERSION}, Device: ${params.DEVICE_TYPE}"
                         } else {
                             echo "ℹ️ Firmware upload skipped (set UPLOAD_FIRMWARE parameter to enable)"
                         }
-                    } else {
-                        error("❌ Firmware binary not found at ${firmwarePath}")
                     }
                 }
             }
         }
 
         stage('App Test') {
-            steps { bat 'npm test' }
+            steps {
+                bat 'npm test'
+            }
         }
     }
 }
