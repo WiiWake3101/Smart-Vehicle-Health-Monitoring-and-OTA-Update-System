@@ -53,10 +53,10 @@ pipeline {
         }
         stage('Install Arduino Libraries') {
             steps {
-                bat 'arduino-cli lib install "TinyGPSPlus" || exit 0'
-                bat 'arduino-cli lib install "Adafruit MPU6050" || exit 0'
-                bat 'arduino-cli lib install "DHT sensor library" || exit 0'
-                bat 'arduino-cli lib install "ArduinoJson" || exit 0'
+                bat 'arduino-cli lib install "TinyGPSPlus"'
+                bat 'arduino-cli lib install "Adafruit MPU6050"'
+                bat 'arduino-cli lib install "DHT sensor library"'
+                bat 'arduino-cli lib install "ArduinoJson"'
             }
         }
         stage('Compile ESP32 Firmware') {
@@ -69,25 +69,37 @@ pipeline {
         }
         stage('Check and Upload Firmware') {
             steps {
-                bat 'if exist esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin echo ✅ Firmware compiled successfully'
-                bat '''
-                    if not exist Devops\\esp32\\build\\esp32.esp32.esp32wrover mkdir Devops\\esp32\\build\\esp32.esp32.esp32wrover
-                    copy esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin Devops\\esp32\\build\\esp32.esp32.esp32wrover\\
-                '''
-                dir('scripts') {
+                script {
+                    // Verify firmware exists
+                    bat 'if exist esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin echo ✅ Firmware compiled successfully'
+                    
+                    // Copy firmware to expected location for script
                     bat '''
-                    set ENV_FILE_PATH=../.env
-                    echo 📋 Checking compiled firmware...
-                    %PYTHON_DIR%\\python.exe upload_firmware.py binaries
+                        if not exist Devops\\esp32\\build\\esp32.esp32.esp32wrover mkdir Devops\\esp32\\build\\esp32.esp32.esp32wrover
+                        copy esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin Devops\\esp32\\build\\esp32.esp32.esp32wrover\\
                     '''
-                    script {
+                    
+                    // Run firmware upload script
+                    dir('scripts') {
+                        // Test firmware detection
+                        bat '''
+                        set ENV_FILE_PATH=../.env
+                        echo 📋 Checking compiled firmware...
+                         %PYTHON_DIR%\\python.exe upload_firmware.py binaries
+                        '''
+                        
+                        // Conditionally upload firmware if parameter is set
                         if (params.UPLOAD_FIRMWARE) {
                             echo "🚀 FIRMWARE UPLOAD ENABLED - Uploading to Supabase..."
+                            
+                            // Include --force flag if FORCE_UPLOAD is true
                             def forceFlag = params.FORCE_UPLOAD ? "--force" : ""
+                            
                             bat """
                             set ENV_FILE_PATH=../.env
-                            %PYTHON_DIR%\\python.exe upload_firmware.py upload "../Devops/esp32/build/esp32.esp32.esp32wrover/Devops.ino.bin" ${params.FIRMWARE_VERSION} ${params.DEVICE_TYPE} ${params.IS_MANDATORY} ${forceFlag}
+                             %PYTHON_DIR%\\python.exe upload_firmware.py upload "../Devops/esp32/build/esp32.esp32.esp32wrover/Devops.ino.bin" ${params.FIRMWARE_VERSION} ${params.DEVICE_TYPE} ${params.IS_MANDATORY} ${forceFlag}
                             """
+                            
                             echo "✅ Firmware uploaded! Version: ${params.FIRMWARE_VERSION}, Device: ${params.DEVICE_TYPE}"
                         } else {
                             echo "ℹ️ Firmware upload skipped (set UPLOAD_FIRMWARE parameter to enable)"
