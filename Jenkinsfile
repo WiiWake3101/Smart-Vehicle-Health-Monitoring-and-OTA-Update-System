@@ -53,10 +53,10 @@ pipeline {
         }
         stage('Install Arduino Libraries') {
             steps {
-                bat 'arduino-cli lib install "TinyGPSPlus"'
-                bat 'arduino-cli lib install "Adafruit MPU6050"'
-                bat 'arduino-cli lib install "DHT sensor library"'
-                bat 'arduino-cli lib install "ArduinoJson"'
+                bat 'arduino-cli lib install "TinyGPSPlus" || exit 0'
+                bat 'arduino-cli lib install "Adafruit MPU6050" || exit 0'
+                bat 'arduino-cli lib install "DHT sensor library" || exit 0'
+                bat 'arduino-cli lib install "ArduinoJson" || exit 0'
             }
         }
         stage('Compile ESP32 Firmware') {
