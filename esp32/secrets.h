@@ -1,4 +1,4 @@
-#define WIFI_SSID "Vivek's iPhone 15 pro"
+#define WIFI_SSID "Vivek_iPhone_15_pro"
 #define WIFI_PASSWORD "7904388983"
 #define SUPABASE_URL "https://dwzyknpwwqslasxlwuku.supabase.co"
 #define SUPABASE_API_KEY "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR3enlrbnB3d3FzbGFzeGx3dWt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2MzA2MjksImV4cCI6MjA3MDIwNjYyOX0.omdxqOgVtFVwTclwj2msjorzr9jjsY_hcCnERW51tsM"
