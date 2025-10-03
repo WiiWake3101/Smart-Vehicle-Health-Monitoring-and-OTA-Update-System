@@ -69,37 +69,25 @@ pipeline {
         }
         stage('Check and Upload Firmware') {
             steps {
-                script {
-                    // Verify firmware exists
-                    bat 'if exist esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin echo ✅ Firmware compiled successfully'
-                    
-                    // Copy firmware to expected location for script
+                bat 'if exist esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin echo ✅ Firmware compiled successfully'
+                bat '''
+                    if not exist Devops\\esp32\\build\\esp32.esp32.esp32wrover mkdir Devops\\esp32\\build\\esp32.esp32.esp32wrover
+                    copy esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin Devops\\esp32\\build\\esp32.esp32.esp32wrover\\
+                '''
+                dir('scripts') {
                     bat '''
-                        if not exist Devops\\esp32\\build\\esp32.esp32.esp32wrover mkdir Devops\\esp32\\build\\esp32.esp32.esp32wrover
-                        copy esp32\\build\\esp32.esp32.esp32wrover\\Devops.ino.bin Devops\\esp32\\build\\esp32.esp32.esp32wrover\\
+                    set ENV_FILE_PATH=../.env
+                    echo 📋 Checking compiled firmware...
+                    %PYTHON_DIR%\\python.exe upload_firmware.py binaries
                     '''
-                    
-                    // Run firmware upload script
-                    dir('scripts') {
-                        // Test firmware detection
-                        bat '''
-                        set ENV_FILE_PATH=../.env
-                        echo 📋 Checking compiled firmware...
-                        %PYTHON_DIR%\\python.exe upload_firmware.py binaries
-                        '''
-                        
-                        // Conditionally upload firmware if parameter is set
+                    script {
                         if (params.UPLOAD_FIRMWARE) {
                             echo "🚀 FIRMWARE UPLOAD ENABLED - Uploading to Supabase..."
-                            
-                            // Include --force flag if FORCE_UPLOAD is true
                             def forceFlag = params.FORCE_UPLOAD ? "--force" : ""
-                            
                             bat """
                             set ENV_FILE_PATH=../.env
                             %PYTHON_DIR%\\python.exe upload_firmware.py upload "../Devops/esp32/build/esp32.esp32.esp32wrover/Devops.ino.bin" ${params.FIRMWARE_VERSION} ${params.DEVICE_TYPE} ${params.IS_MANDATORY} ${forceFlag}
                             """
-                            
                             echo "✅ Firmware uploaded! Version: ${params.FIRMWARE_VERSION}, Device: ${params.DEVICE_TYPE}"
                         } else {
                             echo "ℹ️ Firmware upload skipped (set UPLOAD_FIRMWARE parameter to enable)"
