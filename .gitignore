@@ -44,7 +44,7 @@ app-example
 .env.development
 .env.production
 
-secrets.h
+\Devops\esp32\secrets.h
 
 infra/terraform/*
 !infra/terraform/main.tf
