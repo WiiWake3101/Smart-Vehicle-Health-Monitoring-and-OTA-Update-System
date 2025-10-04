@@ -19,6 +19,7 @@ pipeline {
         USER_ID = credentials('USER_ID')
         HOME = 'C:\\Users\\vivek'
         USERPROFILE = 'C:\\Users\\vivek'
+        PYTHON_DIR = 'C:\\Users\\vivek\\AppData\\Local\\Programs\\Python\\Python313'
     }
     stages {
         stage('Checkout') {
@@ -84,7 +85,7 @@ pipeline {
                         bat '''
                         set ENV_FILE_PATH=../.env
                         echo 📋 Checking compiled firmware...
-                        python upload_firmware.py binaries
+                         %PYTHON_DIR%\\python.exe upload_firmware.py binaries
                         '''
                         
                         // Conditionally upload firmware if parameter is set
@@ -96,7 +97,7 @@ pipeline {
                             
                             bat """
                             set ENV_FILE_PATH=../.env
-                            python upload_firmware.py upload "../Devops/esp32/build/esp32.esp32.esp32wrover/Devops.ino.bin" ${params.FIRMWARE_VERSION} ${params.DEVICE_TYPE} ${params.IS_MANDATORY} ${forceFlag}
+                             %PYTHON_DIR%\\python.exe upload_firmware.py upload "../Devops/esp32/build/esp32.esp32.esp32wrover/Devops.ino.bin" ${params.FIRMWARE_VERSION} ${params.DEVICE_TYPE} ${params.IS_MANDATORY} ${forceFlag}
                             """
                             
                             echo "✅ Firmware uploaded! Version: ${params.FIRMWARE_VERSION}, Device: ${params.DEVICE_TYPE}"
