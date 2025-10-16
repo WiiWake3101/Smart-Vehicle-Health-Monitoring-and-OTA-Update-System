@@ -2,60 +2,22 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ActivityIndicator, Alert, Dimensions, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { supabase } from "../lib/supabase";
+import { SERVER_URL } from "../config/apiConfig"; // <-- use apiConfig.js
 
 const { width, height } = Dimensions.get("window");
 
 const Loginpage = () => {
   const navigation = useNavigation();
 
-  // State for Supabase auth
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [initialCheckDone, setInitialCheckDone] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // Check for existing session on component mount
-  useEffect(() => {
-    checkSession();
-  }, []);
-
-  // Function to check if user is already logged in
-  const checkSession = async () => {
-    try {
-      setLoading(true);
-
-      // Get the current session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-
-      if (sessionError) {
-        setInitialCheckDone(true);
-        setLoading(false);
-        return;
-      }
-
-      if (session) {
-        // Session exists, navigate to Home
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Home', params: { userId: session.user.id } }],
-        });
-      } else {
-        // No session, stay on login page
-        setInitialCheckDone(true);
-        setLoading(false);
-      }
-    } catch (error) {
-      setInitialCheckDone(true);
-      setLoading(false);
-    }
-  };
-
-  // Supabase email/password sign-in
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert('Missing Fields', 'Please enter both email and password');
@@ -66,55 +28,59 @@ const Loginpage = () => {
       setError('');
       setLoading(true);
 
-      // Sign in with email and password
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+      // Step 1: Verify with Spring Boot backend
+      const response = await fetch(`${SERVER_URL}/api/login`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ email, password }),
       });
 
-      if (error) {
-        Alert.alert('Login Error', error.message || "Incorrect email or password. Please try again.");
+      let result;
+      try {
+        result = await response.json();
+      } catch (jsonErr) {
+        result = await response.text();
+      }
+
+      if (!response.ok) {
+        const errorMsg = typeof result === 'string' ? result : 'Authentication failed. Please check your credentials.';
+        Alert.alert('Login Error', errorMsg);
         setLoading(false);
         return;
       }
 
-      // Successful login, store session in secure storage
-      if (data?.session) {
-        try {
-          // Store auth token in AsyncStorage
-          await AsyncStorage.setItem('supabase-auth', JSON.stringify({
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token
-          }));
-
-          // Navigate to home screen
-          const userId = data.user.id;
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'Home', params: { userId } }],
-          });
-        } catch (storageError) {
-          setError("Could not save session. Please try again.");
-        }
-      } else {
-        setError("Login successful but no session created. Please try again.");
+      // Extract userId from Spring Boot response
+      const userId = result?.user?.id || null;
+      if (!userId) {
+        setError("Could not retrieve user ID from backend.");
+        setLoading(false);
+        return;
       }
+
+      // Store login status in AsyncStorage
+      await AsyncStorage.setItem('user-email', email);
+      await AsyncStorage.setItem('user-id', userId);
+
+      // Navigate to home screen, passing userId
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Home', params: { userEmail: email, userId } }],
+      });
     } catch (e) {
-      setError("An unexpected error occurred. Please try again.");
+      console.error("Login error:", e);
+      setError(`Connection error: ${e.message}. Server might be unavailable or rejecting the request.`);
+      Alert.alert(
+        "Connection Problem",
+        `Could not connect to the server at ${SERVER_URL}. Please verify the server is running and accessible.`,
+        [{ text: "OK" }]
+      );
     } finally {
       setLoading(false);
     }
   };
-
-  // Show loading indicator until initial session check is complete
-  if (!initialCheckDone && loading) {
-    return (
-      <View style={[styles.container, styles.loadingContainer]}>
-        <ActivityIndicator size="large" color="#4f8cff" />
-        <Text style={styles.loadingText}>Checking session...</Text>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>

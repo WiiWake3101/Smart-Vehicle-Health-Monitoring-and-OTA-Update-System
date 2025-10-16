@@ -1,14 +1,13 @@
-
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, Linking, StyleSheet, Dimensions } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Dimensions, Alert } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { supabase } from "../lib/supabase";
-import { useNavigation } from "@react-navigation/native"; // <-- add this import
+import { useNavigation } from "@react-navigation/native";
+import { SERVER_URL } from "../config/apiConfig"; // <-- use apiConfig.js
 
 const { width, height } = Dimensions.get("window");
 
 const signup_page = () => {
-  // State for Supabase signup
+  // State for signup
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -16,34 +15,59 @@ const signup_page = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const navigation = useNavigation(); // <-- add this line
+  const navigation = useNavigation();
 
-  // Supabase email/password sign-up
+  // Spring Boot signup
   const handleSignUp = async () => {
+    if (!name || !email || !password) {
+      Alert.alert('Missing Fields', 'Please fill in all required fields');
+      return;
+    }
+    
     setError('');
     setSuccess('');
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          display_name: name,
-          phone: phone,
+    try {
+      console.log(`Connecting to: ${SERVER_URL}/api/signup`);
+      
+      const response = await fetch(`${SERVER_URL}/api/signup`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
-      },
-    });
-    if (error) {
-      if (
-        error.message &&
-        error.message.toLowerCase().includes("user already registered")
-      ) {
-        alert("User already exists. Please login.");
-        navigation.navigate("Login");
-      } else {
-        setError(error.message);
+        body: JSON.stringify({ name, phone, email, password }),
+      });
+
+      // Parse response more robustly
+      let result;
+      try {
+        result = await response.json();
+        console.log("Signup response:", result);
+      } catch (jsonErr) {
+        // If JSON parsing fails, try to get as text
+        result = await response.text();
+        console.log("Signup response (text):", result);
       }
-    } else {
-      navigation.navigate("Login"); 
+
+      if (!response.ok) {
+        if (result.toLowerCase().includes("user already exists")) {
+          alert("User already exists. Please login.");
+          navigation.navigate("Login");
+        } else {
+          setError(result);
+        }
+      } else {
+        setSuccess("Signup successful! Please login.");
+        navigation.navigate("Login");
+      }
+    } catch (e) {
+      console.error("Signup error:", e);
+      setError(`Connection error: ${e.message}`);
+      Alert.alert(
+        "Connection Problem",
+        `Could not connect to the server at ${SERVER_URL}. Please verify the server is running.`,
+        [{ text: "OK" }]
+      );
     }
   };
 
@@ -252,4 +276,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default signup_page;
+export default signup_page;
