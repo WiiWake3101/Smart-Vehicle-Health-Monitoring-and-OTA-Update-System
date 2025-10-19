@@ -25,28 +25,28 @@ const ProfilePage = () => {
   const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
+    console.log("ProfilePage userId (from route):", userId);
     const fetchProfile = async () => {
       setLoading(true);
       const { data, error } = await supabase.auth.getUser();
+      console.log("supabase.auth.getUser() result:", data, error);
       if (!error && data && data.user) {
-        if (!userId || data.user.id === userId) {
-          setProfile({
-            name: data.user.user_metadata?.name || "",
-            email: data.user.email,
-            id: data.user.id,
-            phone: data.user.phone || data.user.user_metadata?.phone || "",
-          });
-          setName(data.user.user_metadata?.name || "");
-          setEmail(data.user.email || "");
-          setPhone(data.user.phone || data.user.user_metadata?.phone || "");
-        } else {
-          setProfile(null);
-        }
+        setProfile({
+          name: data.user.user_metadata?.name || "",
+          email: data.user.email,
+          id: data.user.id,
+          phone: data.user.phone || data.user.user_metadata?.phone || "",
+        });
+        setName(data.user.user_metadata?.name || "");
+        setEmail(data.user.email || "");
+        setPhone(data.user.phone || data.user.user_metadata?.phone || "");
+      } else {
+        setProfile(null);
       }
       setLoading(false);
     };
     fetchProfile();
-  }, [userId]);
+  }, []);
 
   // Update user profile (name, email, phone) in Supabase Auth
   const handleSave = async () => {

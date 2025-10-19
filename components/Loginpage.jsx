@@ -55,19 +55,27 @@ const Loginpage = () => {
       // Extract userId from Spring Boot response
       const userId = result?.user?.id || null;
       if (!userId) {
-        setError("Could not retrieve user ID from backend.");
+        Alert.alert('No Account found', 'No account found for this email/password. Please sign up first.');
         setLoading(false);
         return;
       }
 
+      // Step 2: Create Supabase user if not exists
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      if (authError) {
+          // Do NOT create a new user, just show an error
+          Alert.alert('No Account found', 'No account found for this email/password. Please sign up first.');
+          setLoading(false);
+        return;
+      }
+
       // Store login status in AsyncStorage
-      await AsyncStorage.setItem('user-email', email);
       await AsyncStorage.setItem('user-id', userId);
 
       // Navigate to home screen, passing userId
       navigation.reset({
         index: 0,
-        routes: [{ name: 'Home', params: { userEmail: email, userId } }],
+        routes: [{ name: 'Home', params: { userId } }],
       });
     } catch (e) {
       console.error("Login error:", e);
